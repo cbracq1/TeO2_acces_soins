@@ -1,0 +1,369 @@
+---
+title: "Niveau iris"
+author: "Clémence Bracq"
+date: "2023-11-06"
+output:
+  html_notebook: 
+    encoding: UTF-8
+  pdf_document: default
+  html_document:
+    df_print: paged
+    encoding: UTF-8
+editor_options:
+  markdown:
+    wrap: 72
+---
+
+# Dans quels types d'IRIS se concentrent les établissements?{.tabset .tabset-fade}
+
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+```{r libraries, include=FALSE}
+source("Libraries.R")
+```
+
+```{r base, include = FALSE}
+if (!exists("BDD_ctx")) {load("X:/HAB-TEO2-exploitations/MàJ Insee avril 2023/Base de données contextuelles_v092023/R/BDD_ctx.rdata")}
+if (!exists("bpe_parxy")) {
+  bpe_parxy <- read_sas("W:/A2031/GEN_A2031200_DCOMPSAS/BPE2020.sas7bdat")
+  bpe_parxy <- bpe_parxy %>% 
+    select(an, an_ref, CAPACITE, depcom, idetab, idservice, iris, 
+           lambert_x, lambert_y, QUALITE_XY, SDOM, TYPEQU) %>% 
+    filter(TYPEQU %in% c("D101", "D102", "D103", "D104", "D105", "D106", "D107", "D108", "D110", "D307")) %>% 
+    mutate(code_iris_formatBDD = paste(depcom, iris, sep = ""))
+
+  ## Recodage
+bpe_parxy$TYPEQU_rec <- bpe_parxy$TYPEQU %>%
+  fct_recode(
+    "Etablissement court séjour" = "D101",
+    "Etablissement moyen séjour" = "D102",
+    "Etablissement long séjour" = "D103",
+    "Etablissement psychiatrique" = "D104",
+    "Centre lutte cancer" = "D105",
+    "Urgences" = "D106",
+    "Maternité" = "D107",
+    "Centre de santé" = "D108",
+    "Centre médecine préventive" = "D110",
+    "Pharmacie" = "D307"
+  )}
+
+iris <- BDD_ctx %>% select(code_iris_original_TeO2, matches("^iris_pct_im\\w*$")) %>% distinct() %>% 
+  inner_join(bpe_parxy, by=c("code_iris_original_TeO2"="code_iris_formatBDD"))
+#Une ligne par etab avec les caractéristiques de son IRIS
+```
+
+
+## Proportion d'immigrés {.tabset .tabset-fade}
+### Ridgeline
+
+
+```{r, echo = FALSE}
+iris %>%
+  select(code_iris_original_TeO2, iris_pct_immi) %>%
+  distinct() %>%
+  ggplot(aes(x = iris_pct_immi)) +
+  geom_density(color = "red", fill = "red") +
+  theme()+xlab("Proportion d'immigrés dans l'IRIS")+ylab(NULL) 
+```
+
+```{r, echo = FALSE}
+library(ggridges)
+
+ggplot(iris, aes(x = iris_pct_immi, y = TYPEQU_rec, fill = TYPEQU_rec)) +
+  geom_density_ridges() +
+  theme_ridges() +
+  theme(legend.position = "none")+ylab(NULL)+xlab("Proportion d'immigrés dans l'IRIS")
+```
+### Boxplot
+```{r, echo=FALSE}
+iris %>% select(code_iris_original_TeO2, iris_pct_immi) %>% distinct() %>% 
+  mutate(baseline = "                                   Baseline") %>%  
+  ggplot( aes(x=iris_pct_immi, y = baseline)) +
+    geom_boxplot() +
+    theme(
+      legend.position="none"    ) +
+    xlab("Proportion d'immigrés dans l'IRIS")+ylab(NULL)
+```
+
+```{r, echo = FALSE}
+iris %>% 
+  ggplot( aes(x=iris_pct_immi, y=TYPEQU_rec, fill=TYPEQU_rec)) +
+    geom_boxplot() +
+    # scale_fill_viridis(discrete = TRUE, alpha=0.6, option="A") +
+    # theme_ipsum() +
+    theme(
+      legend.position="none",
+      plot.title = element_text(size=11)
+    ) +
+    xlab("Proportion d'immigrés dans l'IRIS")+ylab(NULL)
+
+
+```
+
+```{rechec, include = FALSE}
+library(ggridges)
+a<- ggplot(iris, aes(x = iris_pct_immi, y = TYPEQU_rec, fill = TYPEQU_rec)) +
+  geom_density_ridges() +
+  theme_ridges() + 
+  theme(legend.position = "none", axis.text.x = element_blank())+xlab(NULL)+ylab(NULL)
+
+b <- iris %>% select(code_iris_original_TeO2, iris_pct_immi) %>% distinct() %>% 
+  ggplot(aes(x=iris_pct_immi))+
+  geom_density(color = "red", fill = "red")+
+  theme(
+    plot.margin = unit(c(2.5, 1, 1, 5), "cm"),  # Ajuster la marge (haut, droite, bas, gauche)
+    axis.title.y = element_text(color = "black", size = 12),  # Style du texte du label de l'axe x
+    panel.background = element_rect(fill = "white", color = NA)
+  )+
+  xlab("Proportion d'immigrés dans l'IRIS")+ylab("Baseline")
+
+c<- iris %>% select(code_iris_original_TeO2, iris_pct_immi) %>% distinct() %>% 
+  mutate(baseline = "                                   Baseline") %>% 
+  ggplot(aes(x = iris_pct_immi, y = baseline)) +
+  geom_density_ridges() +
+  theme_ridges() + 
+  theme(legend.position = "none")+xlab(NULL)+ylab(NULL)
+
+plot_grid(a, c, ncol = 1)
+```
+
+
+```{r echec, include = FALSE}
+library(ggplot2)
+library(ggridges)
+library(dplyr)
+
+# Créez la densité pour les iris en France
+baseline <- iris %>%
+  select(code_iris_original_TeO2, iris_pct_immi) %>%
+  distinct() %>%
+  ggplot(aes(x = iris_pct_immi)) +
+  geom_density(color = "red", fill = "red") +
+  theme()+xlab("Proportion d'immigrés dans l'IRIS")+ylab("Baseline") 
+
+# Créez le graphique de ridgeline
+ridgeline_plot <- ggplot(iris, aes(x = iris_pct_immi, y = TYPEQU_rec, fill = TYPEQU_rec)) +
+  geom_density_ridges() +
+  theme_ridges() +
+  theme(legend.position = "none")+xlab(NULL)+ylab(NULL)
+
+# Trouvez la plage d'axe x de la ridgeline
+x_range <- ggplot_build(ridgeline_plot)$layout$panel_params[[1]]$xlim
+
+# Appliquez la même plage d'axe x à la densité des iris en France
+baseline <- baseline + coord_cartesian(xlim = x_range)
+
+# Affichez les deux graphiques
+gridExtra::grid.arrange(ridgeline_plot, baseline, ncol = 1, heights = c(3, 1))
+
+
+```
+
+
+## Maghreb{.tabset .tabset-fade}
+### Ridgeline
+```{r, echo = FALSE}
+iris %>%
+  select(code_iris_original_TeO2, iris_pct_imagh) %>%
+  distinct() %>%
+  ggplot(aes(x = iris_pct_imagh)) +
+  geom_density(color = "red", fill = "red") +
+  theme()+xlab("Proportion d'immigrés nés au Maghreb dans l'IRIS")+ylab(NULL) 
+```
+
+```{r, echo = FALSE}
+ggplot(iris, aes(x = iris_pct_imagh, y = TYPEQU_rec, fill = TYPEQU_rec)) +
+  geom_density_ridges() +
+  theme_ridges() +
+  theme(legend.position = "none")+ylab(NULL)+xlab("Proportion d'immigrés nés au Maghreb dans l'IRIS")
+```
+### Boxplot
+```{r, echo=FALSE}
+iris %>% select(code_iris_original_TeO2, iris_pct_imagh) %>% distinct() %>% 
+  mutate(baseline = "                                   Baseline") %>%  
+  ggplot( aes(x=iris_pct_imagh, y = baseline)) +
+    geom_boxplot() +
+    theme(
+      legend.position="none"    ) +
+    xlab("Proportion d'immigrés nés au Maghreb dans l'IRIS")+ylab(NULL)
+```
+
+```{r, echo = FALSE}
+iris %>% 
+  ggplot( aes(x=iris_pct_imagh, y=TYPEQU_rec, fill=TYPEQU_rec)) +
+    geom_boxplot() +
+    # scale_fill_viridis(discrete = TRUE, alpha=0.6, option="A") +
+    # theme_ipsum() +
+    theme(
+      legend.position="none",
+      plot.title = element_text(size=11)
+    ) +
+    xlab("Proportion d'immigrés nés au Maghreb dans l'IRIS")+ylab(NULL)
+```
+## Afrique subsaharienne {.tabset .tabset-fade}
+### Ridgeline
+```{r, echo = FALSE}
+iris %>%
+  select(code_iris_original_TeO2, iris_pct_imafs) %>%
+  distinct() %>%
+  ggplot(aes(x = iris_pct_imafs)) +
+  geom_density(color = "red", fill = "red") +
+  theme()+xlab("Proportion d'immigrés nés en Afrique subsaharienne dans l'IRIS")+ylab(NULL) 
+```
+
+```{r, echo = FALSE}
+ggplot(iris, aes(x = iris_pct_imafs, y = TYPEQU_rec, fill = TYPEQU_rec)) +
+  geom_density_ridges() +
+  theme_ridges() +
+  theme(legend.position = "none")+ylab(NULL)+xlab("Proportion d'immigrés nés en Afrique subsaharienne dans l'IRIS")
+```
+### Boxplot
+```{r, echo=FALSE}
+iris %>% select(code_iris_original_TeO2, iris_pct_imafs) %>% distinct() %>% 
+  mutate(baseline = "                                   Baseline") %>%  
+  ggplot( aes(x=iris_pct_imafs, y = baseline)) +
+    geom_boxplot() +
+    theme(
+      legend.position="none"    ) +
+    xlab("Proportion d'immigrés nés en Afrique subsaharienne dans l'IRIS")+ylab(NULL)
+```
+
+```{r, echo = FALSE}
+iris %>% 
+  ggplot( aes(x=iris_pct_imafs, y=TYPEQU_rec, fill=TYPEQU_rec)) +
+    geom_boxplot() +
+    # scale_fill_viridis(discrete = TRUE, alpha=0.6, option="A") +
+    # theme_ipsum() +
+    theme(
+      legend.position="none",
+      plot.title = element_text(size=11)
+    ) +
+    xlab("Proportion d'immigrés nés en Afrique subsaharienne dans l'IRIS")+ylab(NULL)
+```
+## Europe du Sud{.tabset .tabset-fade}
+### Ridgeline
+```{r, echo = FALSE}
+iris %>%
+  select(code_iris_original_TeO2, iris_pct_imeus) %>%
+  distinct() %>%
+  ggplot(aes(x = iris_pct_imeus)) +
+  geom_density(color = "red", fill = "red") +
+  theme()+xlab("Proportion d'immigrés nés en Europe du Sud dans l'IRIS")+ylab(NULL) 
+```
+
+```{r, echo = FALSE}
+ggplot(iris, aes(x = iris_pct_imeus, y = TYPEQU_rec, fill = TYPEQU_rec)) +
+  geom_density_ridges() +
+  theme_ridges() +
+  theme(legend.position = "none")+ylab(NULL)+xlab("Proportion d'immigrés nés en Europe du Sud dans l'IRIS")
+```
+### Boxplot
+```{r, echo=FALSE}
+iris %>% select(code_iris_original_TeO2, iris_pct_imeus) %>% distinct() %>% 
+  mutate(baseline = "                                   Baseline") %>%  
+  ggplot( aes(x=iris_pct_imeus, y = baseline)) +
+    geom_boxplot() +
+    theme(
+      legend.position="none"    ) +
+    xlab("Proportion d'immigrés nés en Afrique subsaharienne dans l'IRIS")+ylab(NULL)
+```
+
+```{r, echo = FALSE}
+iris %>% 
+  ggplot( aes(x=iris_pct_imeus, y=TYPEQU_rec, fill=TYPEQU_rec)) +
+    geom_boxplot() +
+    # scale_fill_viridis(discrete = TRUE, alpha=0.6, option="A") +
+    # theme_ipsum() +
+    theme(
+      legend.position="none",
+      plot.title = element_text(size=11)
+    ) +
+    xlab("Proportion d'immigrés nés en Afrique subsaharienne dans l'IRIS")+ylab(NULL)
+```
+
+## Autres UE{.tabset .tabset-fade}
+### Ridgeline
+```{r, echo = FALSE}
+iris %>%
+  select(code_iris_original_TeO2, iris_pct_imue28) %>%
+  distinct() %>%
+  ggplot(aes(x = iris_pct_imue28)) +
+  geom_density(color = "red", fill = "red") +
+  theme()+xlab("Proportion d'immigrés nés dans d'autres pays de l'Union Européenne (à 28) dans l'IRIS")+ylab(NULL) 
+```
+
+```{r, echo = FALSE}
+ggplot(iris, aes(x = iris_pct_imue28, y = TYPEQU_rec, fill = TYPEQU_rec)) +
+  geom_density_ridges() +
+  theme_ridges() +
+  theme(legend.position = "none")+ylab(NULL)+xlab("Proportion d'immigrés nés dans d'autres pays de l'Union Européenne (à 28) dans l'IRIS")
+```
+
+### Boxplot
+```{r, echo=FALSE}
+iris %>% select(code_iris_original_TeO2, iris_pct_imue28) %>% distinct() %>% 
+  mutate(baseline = "                                   Baseline") %>%  
+  ggplot( aes(x=iris_pct_imue28, y = baseline)) +
+    geom_boxplot() +
+    theme(
+      legend.position="none"    ) +
+    xlab("Proportion d'immigrés nés dans d'autres pays de l'Union Européenne (à 28) dans l'IRIS")+ylab(NULL)
+```
+
+```{r, echo = FALSE}
+iris %>% 
+  ggplot( aes(x=iris_pct_imue28, y=TYPEQU_rec, fill=TYPEQU_rec)) +
+    geom_boxplot() +
+    # scale_fill_viridis(discrete = TRUE, alpha=0.6, option="A") +
+    # theme_ipsum() +
+    theme(
+      legend.position="none",
+      plot.title = element_text(size=11)
+    ) +
+    xlab("Proportion d'immigrés nés dans d'autres pays de l'Union Européenne (à 28) dans l'IRIS")+ylab(NULL)
+```
+## Asie du Sud-Est{.tabset .tabset-fade}
+### Ridgeline
+
+```{r, echo = FALSE}
+iris %>%
+  select(code_iris_original_TeO2, iris_pct_imasie) %>%
+  distinct() %>%
+  ggplot(aes(x = iris_pct_imasie)) +
+  geom_density(color = "red", fill = "red") +
+  theme()+xlab("Proportion d'immigrés nés en Asie du Sud-Est dans l'IRIS")+ylab(NULL) 
+```
+
+```{r, echo = FALSE}
+ggplot(iris, aes(x = iris_pct_imasie, y = TYPEQU_rec, fill = TYPEQU_rec)) +
+  geom_density_ridges() +
+  theme_ridges() +
+  theme(legend.position = "none")+ylab(NULL)+xlab("Proportion d'immigrés nés en Asie du Sud-Est dans l'IRIS")
+```
+
+### Boxplot
+```{r, echo=FALSE}
+iris %>% select(code_iris_original_TeO2, iris_pct_imasie) %>% distinct() %>% 
+  mutate(baseline = "                                   Baseline") %>%  
+  ggplot( aes(x=iris_pct_imasie, y = baseline)) +
+    geom_boxplot() +
+    theme(
+      legend.position="none"    ) +
+    xlab("Proportion d'immigrés nés en Asie du Sud-Est dans l'IRIS")+ylab(NULL)
+```
+
+```{r, echo = FALSE}
+iris %>% 
+  ggplot( aes(x=iris_pct_imasie, y=TYPEQU_rec, fill=TYPEQU_rec)) +
+    geom_boxplot() +
+    # scale_fill_viridis(discrete = TRUE, alpha=0.6, option="A") +
+    # theme_ipsum() +
+    theme(
+      legend.position="none",
+      plot.title = element_text(size=11)
+    ) +
+    xlab("Proportion d'immigrés nés en Asie du Sud-Est dans l'IRIS")+ylab(NULL)
+```

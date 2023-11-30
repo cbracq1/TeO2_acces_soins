@@ -1,0 +1,585 @@
+---
+title: "Stats desc distance etab"
+author: "Clémence Bracq"
+date: "2023-11-09"
+output:
+  html_notebook: default
+  html_document:
+    df_print: paged
+  pdf_document: default
+editor_options:
+  markdown:
+    wrap: 72
+---
+# Statistiques descriptives distances{.tabset .tabset-fade}
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+```{r libraries, include=FALSE}
+source("Libraries.R")
+```
+
+```{r base, include = FALSE}
+if (!exists("indiv_bdd")) {source("Base.R")}
+if (!exists("teo_dist_ident")) {teo_dist_ident <- read_parquet("distances_etab.parquet")}
+if (!exists("teo_dist_ident_lib")) {teo_dist_ident_lib <- read_parquet("distances_lib.parquet")}
+indiv_dist <- indiv_bdd %>% 
+  left_join(teo_dist_ident, by = "ident_fa") %>% 
+  left_join(teo_dist_ident_lib, by = "ident_fa")
+```
+
+```{r, include = FALSE}
+indiv_dist$urg_5km_top <- cut(indiv_dist$urg_5km, breaks = c(-1, 0, 100))
+indiv_dist$urg_5km_top <- indiv_dist$urg_5km_top %>%
+  fct_recode(
+    "Pas d'urgences à moins de 5 km" = "(-1,0]",
+    "Urgences à moins de 5 km" = "(0,100]"
+  )
+
+indiv_dist$mat_5km_top <- cut(indiv_dist$mat_5km, breaks = c(-1, 0, 100))
+indiv_dist$mat_5km_top <- indiv_dist$mat_5km_top %>%
+  fct_recode(
+    "Pas de maternités \nà moins de 5 km" = "(-1,0]",
+    "Maternité à moins de 5 km" = "(0,100]"
+  )
+
+indiv_dist$centre_5km_top <- cut(indiv_dist$centre_5km, breaks = c(-1, 0, 100))
+indiv_dist$centre_5km_top <- indiv_dist$centre_5km_top %>%
+  fct_recode(
+    "Pas de centres de santé\n à moins de 5 km" = "(-1,0]",
+    "Centre de santé à moins de 5 km" = "(0,100]"
+  )
+
+indiv_dist$prev_5km_top <- cut(indiv_dist$prev_5km, breaks = c(-1, 0, 100))
+indiv_dist$prev_5km_top <- indiv_dist$prev_5km_top %>%
+  fct_recode(
+    "Pas de centres de médecine\n préventive à moins de 5 km" = "(-1,0]",
+    "Centre de médecine préventive\n à moins de 5 km" = "(0,100]"
+  )
+
+indiv_dist$pharma_5km_top <- cut(indiv_dist$pharma_5km, breaks = c(-1, 0, 100))
+indiv_dist$pharma_5km_top <- indiv_dist$pharma_5km_top %>%
+  fct_recode(
+    "Pas de pharmacies à moins d'1 km" = "(-1,0]",
+    "Pharmacie à moins de 5 km" = "(0,100]"
+  )
+
+indiv_dist$court_5km_top <- cut(indiv_dist$court_5km, breaks = c(-1, 0, 100))
+indiv_dist$court_5km_top <- indiv_dist$court_5km_top %>%
+  fct_recode(
+    "Pas d'établissements court \nséjour à moins de 5 km" = "(-1,0]",
+    "Etablissement court séjour \nà moins de 5 km" = "(0,100]"
+  )
+
+indiv_dist$moyen_5km_top <- cut(indiv_dist$moyen_5km, breaks = c(-1, 0, 100))
+indiv_dist$moyen_5km_top <- indiv_dist$moyen_5km_top %>%
+  fct_recode(
+    "Pas d'établissements moyen\n séjour à moins de 5 km" = "(-1,0]",
+    "Etablissement moyen séjour\n à moins de 5 km" = "(0,100]"
+  )
+
+indiv_dist$long_5km_top <- cut(indiv_dist$long_5km, breaks = c(-1, 0, 100))
+indiv_dist$long_5km_top <- indiv_dist$long_5km_top %>%
+  fct_recode(
+    "Pas d'établissements long\n séjour à moins de 5 km" = "(-1,0]",
+    "Etablissement long séjour\n à moins de 5 km" = "(0,100]"
+  )
+
+indiv_dist$psy_5km_top <- cut(indiv_dist$psy_5km, breaks = c(-1, 0, 100))
+indiv_dist$psy_5km_top <- indiv_dist$psy_5km_top %>%
+  fct_recode(
+    "Pas d'établissements psychiatriques\n à moins de 5 km" = "(-1,0]",
+    "Etablissement psychiatrique\n à moins de 5 km" = "(0,100]"
+  )
+
+indiv_dist$cancer_5km_top <- cut(indiv_dist$cancer_5km, breaks = c(-1, 0, 100))
+indiv_dist$cancer_5km_top <- indiv_dist$cancer_5km_top %>%
+  fct_recode(
+    "Pas de centre lutte \ncancer à moins de 5 km" = "(-1,0]",
+    "Centre lutte cancer \nà moins de 5 km" = "(0,100]"
+  )
+
+indiv_dist_pd <- svydesign(ids = indiv_dist$ident_fa, data = indiv_dist, weights = indiv_dist$poidsi)
+```
+
+
+## Distance et taille ville
+
+```{r, fig.height=15}
+
+
+a <- ggsurvey(indiv_dist_pd,  aes(x = com_pop_ind_pond, y = dist_min_urg)) +
+  geom_point(alpha = 0.1)+
+  geom_smooth() +
+  theme_minimal()+
+  scale_x_continuous(breaks = c(0, 25000, 200000), labels = label_number(accuracy = 1))+
+  xlab("Population de la commune")+ylab("Distance aux urgences\n les plus proches")
+
+b <- ggsurvey(indiv_dist_pd,  aes(x = com_pop_ind_pond, y = dist_min_mat)) +
+  geom_point(alpha = 0.1)+
+  geom_smooth() +
+  theme_minimal()+
+  scale_x_continuous(breaks = c(0, 25000, 200000), labels = label_number(accuracy = 1))+
+  xlab("Population de la commune")+ylab("Distance à la maternité\n la plus proche")
+
+c<- ggsurvey(indiv_dist_pd,  aes(x = com_pop_ind_pond, y = lib_dist_min_medge)) +
+  geom_point(alpha = 0.1)+
+  geom_smooth() +
+  theme_minimal()+
+  scale_x_continuous(breaks = c(0, 25000, 200000), labels = label_number(accuracy = 1))+
+  xlab("Population de la commune")+ylab("Distance au médecin \ngénéraliste le plus proche")
+
+
+d <- ggsurvey(indiv_dist_pd,  aes(x = com_pop_ind_pond, y = com_apl_mg)) +
+  geom_point(alpha = 0.1)+
+  geom_smooth() +
+  theme_minimal()+
+  scale_x_continuous(breaks = c(0, 25000, 200000), labels = label_number(accuracy = 1))+
+  xlab("Population de la commune")+ylab("APL aux médecins\n généralistes")
+
+e<- ggsurvey(indiv_dist_pd,  aes(x = com_pop_ind_pond, y = lib_dist_min_gynéco)) +
+  geom_point(alpha = 0.1)+
+  geom_smooth() +
+  theme_minimal()+
+  scale_x_continuous(breaks = c(0, 25000, 200000), labels = label_number(accuracy = 1))+
+  xlab("Population de la commune")+ylab("Distance au gynécologue \nle plus proche")
+
+
+f <- ggsurvey(indiv_dist_pd,  aes(x = com_pop_ind_pond, y = com_apl_gyn)) +
+  geom_point(alpha = 0.1)+
+  geom_smooth() +
+  theme_minimal()+
+  scale_x_continuous(breaks = c(0, 25000, 200000), labels = label_number(accuracy = 1))+
+  xlab("Population de la commune")+ylab("APL aux \n gynécologues")
+
+g <- ggsurvey(indiv_dist_pd,  aes(x = com_pop_ind_pond, y = lib_dist_min_sf)) +
+  geom_point(alpha = 0.1)+
+  geom_smooth() +
+  theme_minimal()+
+  scale_x_continuous(breaks = c(0, 25000, 200000), labels = label_number(accuracy = 1))+
+  xlab("Population de la commune")+ylab("Distance à la \nsage-femme la plus proche")
+
+
+h <- ggsurvey(indiv_dist_pd,  aes(x = com_pop_ind_pond, y = com_apl_sagf)) +
+  geom_point(alpha = 0.1)+
+  geom_smooth() +
+  theme_minimal()+
+  scale_x_continuous(breaks = c(0, 25000, 200000), labels = label_number(accuracy = 1))+
+  xlab("Population de la commune")+ylab("APL aux \n sages-femmes")
+
+i<- ggsurvey(indiv_dist_pd,  aes(x = com_pop_ind_pond, y = lib_dist_min_dent)) +
+  geom_point(alpha = 0.1)+
+  geom_smooth() +
+  theme_minimal()+
+  scale_x_continuous(breaks = c(0, 25000, 200000), labels = label_number(accuracy = 1))+
+  xlab("Population de la commune")+ylab("Distance au dentiste \nle plus proche")
+
+
+j <- ggsurvey(indiv_dist_pd,  aes(x = com_pop_ind_pond, y = com_apl_dent)) +
+  geom_point(alpha = 0.1)+
+  geom_smooth() +
+  theme_minimal()+
+  scale_x_continuous(breaks = c(0, 25000, 200000), labels = label_number(accuracy = 1))+
+  xlab("Population de la commune")+ylab("APL aux \n dentistes")
+
+k<- ggsurvey(indiv_dist_pd,  aes(x = com_pop_ind_pond, y = lib_dist_min_psychiatre)) +
+  geom_point(alpha = 0.1)+
+  geom_smooth() +
+  theme_minimal()+
+  scale_x_continuous(breaks = c(0, 25000, 200000), labels = label_number(accuracy = 1))+
+  xlab("Population de la commune")+ylab("Distance au psychiatre \nle plus proche")
+
+
+l <- ggsurvey(indiv_dist_pd,  aes(x = com_pop_ind_pond, y = com_apl_psy)) +
+  geom_point(alpha = 0.1)+
+  geom_smooth() +
+  theme_minimal()+
+  scale_x_continuous(breaks = c(0, 25000, 200000), labels = label_number(accuracy = 1))+
+  xlab("Population de la commune")+ylab("APL aux \n psychiatres")
+
+m<- ggsurvey(indiv_dist_pd,  aes(x = com_pop_ind_pond, y = lib_dist_min_psychologue)) +
+  geom_point(alpha = 0.1)+
+  geom_smooth() +
+  theme_minimal()+
+  scale_x_continuous(breaks = c(0, 25000, 200000), labels = label_number(accuracy = 1))+
+  xlab("Population de la commune")+ylab("Distance au psychologue \nle plus proche")
+
+
+n <- ggsurvey(indiv_dist_pd,  aes(x = com_pop_ind_pond, y = dist_min_pharma)) +
+  geom_point(alpha = 0.1)+
+  geom_smooth() +
+  theme_minimal()+
+  scale_x_continuous(breaks = c(0, 25000, 200000), labels = label_number(accuracy = 1))+
+  xlab("Population de la commune")+ylab("Distance à la pharmacie \nla plus proche")
+
+
+o <- ggsurvey(indiv_dist_pd,  aes(x = com_pop_ind_pond, y = lib_dist_min_labo)) +
+  geom_point(alpha = 0.1)+
+  geom_smooth() +
+  theme_minimal()+
+  scale_x_continuous(breaks = c(0, 25000, 200000), labels = label_number(accuracy = 1))+
+  xlab("Population de la commune")+ylab("Distance à la pharmacie \nla plus proche")
+
+plot_grid(a, b, c, d, f, g, h, i, k, l, m, n, o, ncol = 2)
+
+
+```
+
+
+
+## Sur la population générale{.tabset .tabset-fade}
+
+### Urgences
+
+```{r, echo = FALSE, fig.width = 8, fig.height=5}
+
+tb <- data.frame(cprop(svytable(~group1_rec +urg_5km_top, indiv_dist_pd))) %>% 
+  filter(group1_rec!="Total")
+
+
+ggplot(tb, aes(x = urg_5km_top, y= Freq, fill = group1_rec)) +
+  geom_bar(stat="identity", width=.5, position = "dodge")+labs(x = "Proximité", y = "Proportion", fill = "Rapport à la migration")
+```
+
+
+```{r, echo = FALSE}
+
+ggsurvey(indiv_dist_pd, aes(x=as.factor(group1_rec), y=dist_min_urg)) + 
+  geom_violin()+
+  geom_boxplot(width=0.1, color="grey", alpha=0.2)+xlab("Rapport à la migration")+ylab("Distance aux urgences les plus proches en mètres")
+
+```
+### Maternités
+
+```{r, echo = FALSE, fig.width = 8, fig.height=5}
+tb <- data.frame(cprop(svytable(~group1_rec+ mat_5km_top, indiv_dist_pd))) %>% 
+  filter(group1_rec!="Total")
+
+ggplot(tb, aes(x = mat_5km_top, y= Freq, fill = group1_rec)) +
+  geom_bar(stat="identity", width=.5, position = "dodge")+labs(x = "Proximité", y = "Proportion", fill = "Rapport à la migration")
+```
+
+```{r, echo = FALSE}
+ggsurvey(indiv_dist_pd, aes(x=as.factor(group1_rec), y=dist_min_mat)) + 
+  geom_violin()+
+  geom_boxplot(width=0.1, color="grey", alpha=0.2)+
+  xlab("Rapport à la migration")+ylab("Distance à la maternité la plus proche en mètres")
+```
+
+### Centres de santé
+
+```{r, echo = FALSE, fig.width = 8, fig.height=5}
+tb <- data.frame(cprop(svytable(~group1_rec+ centre_5km_top, indiv_dist_pd))) %>% 
+  filter(group1_rec!="Total")
+
+ggplot(tb, aes(x = centre_5km_top, y= Freq, fill = group1_rec)) +
+  geom_bar(stat="identity", width=.5, position = "dodge")+labs(x = "Proximité", y = "Proportion", fill = "Rapport à la migration")
+```
+
+```{r, echo = FALSE}
+ggsurvey(indiv_dist_pd, aes(x=as.factor(group1_rec), y=dist_min_centre)) + 
+  geom_violin()+
+  geom_boxplot(width=0.1, color="grey", alpha=0.2)+
+  xlab("Rapport à la migration")+ylab("Distance au centre de santé le plus proche en mètres")
+```
+
+### Centre de médecine préventive
+
+```{r, echo = FALSE, fig.width = 8, fig.height=5}
+tb <- data.frame(cprop(svytable(~group1_rec+ prev_5km_top, indiv_dist_pd))) %>% 
+  filter(group1_rec!="Total")
+
+ggplot(tb, aes(x = prev_5km_top, y= Freq, fill = group1_rec)) +
+  geom_bar(stat="identity", width=.5, position = "dodge")+labs(x = "Proximité", y = "Proportion", fill = "Rapport à la migration")
+```
+
+```{r, echo = FALSE}
+ggsurvey(indiv_dist_pd, aes(x=as.factor(group1_rec), y=dist_min_prev)) + 
+  geom_violin()+
+  geom_boxplot(width=0.1, color="grey", alpha=0.2)+
+  xlab("Rapport à la migration")+ylab("Distance au centre de médecine préventive le plus proche en mètres")
+```
+
+### Pharmacies
+
+```{r, echo = FALSE, fig.width = 8, fig.height=5}
+tb <- data.frame(cprop(svytable(~group1_rec+pharma_5km_top, indiv_dist_pd))) %>% 
+  filter(group1_rec!="Total")
+
+ggplot(tb, aes(x = pharma_5km_top, y= Freq, fill = group1_rec)) +
+  geom_bar(stat="identity", width=.5, position = "dodge")+labs(x = "Proximité", y = "Proportion", fill = "Rapport à la migration")
+```
+
+```{r, echo = FALSE}
+ggsurvey(indiv_dist_pd, aes(x=as.factor(group1_rec), y=dist_min_pharma)) + 
+  geom_violin()+
+  geom_boxplot(width=0.1, color="grey", alpha=0.2)+
+  xlab("Rapport à la migration")+ylab("Distance à la pharmacie la plus proche en mètres")
+```
+
+### Etablissement court séjour
+
+```{r, echo = FALSE, fig.width = 8, fig.height=5}
+tb <- data.frame(cprop(svytable(~group1_rec+court_5km_top, indiv_dist_pd))) %>% 
+  filter(group1_rec!="Total")
+
+ggplot(tb, aes(x = court_5km_top, y= Freq, fill = group1_rec)) +
+  geom_bar(stat="identity", width=.5, position = "dodge")+labs(x = "Proximité", y = "Proportion", fill = "Rapport à la migration")
+```
+
+```{r, echo = FALSE}
+ggsurvey(indiv_dist_pd, aes(x=as.factor(group1_rec), y=dist_min_court)) + 
+  geom_violin()+
+  geom_boxplot(width=0.1, color="grey", alpha=0.2)+
+  xlab("Rapport à la migration")+ylab("Distance à l'établissement court séjour le plus proche en mètres")
+```
+
+### Etablissement moyen séjour
+
+```{r, echo = FALSE, fig.width = 8, fig.height=5}
+tb <- data.frame(cprop(svytable(~group1_rec +moyen_5km_top, indiv_dist_pd))) %>% 
+  filter(group1_rec!="Total")
+
+ggplot(tb, aes(x = moyen_5km_top, y= Freq, fill = group1_rec)) +
+  geom_bar(stat="identity", width=.5, position = "dodge")+labs(x = "Proximité", y = "Proportion", fill = "Rapport à la migration")
+```
+
+```{r, echo = FALSE}
+ggsurvey(indiv_dist_pd, aes(x=as.factor(group1_rec), y=dist_min_moyen)) + 
+  geom_violin()+
+  geom_boxplot(width=0.1, color="grey", alpha=0.2)+
+  xlab("Rapport à la migration")+ylab("Distance à l'établissement moyen séjour le plus proche en mètres")
+```
+
+
+### Etablissement long séjour 
+
+```{r, echo = FALSE, fig.width = 8, fig.height=5}
+tb <- data.frame(cprop(svytable(~group1_rec +long_5km_top, indiv_dist_pd))) %>% 
+  filter(group1_rec!="Total")
+
+ggplot(tb, aes(x = long_5km_top, y= Freq, fill = group1_rec)) +
+  geom_bar(stat="identity", width=.5, position = "dodge")+labs(x = "Proximité", y = "Proportion", fill = "Rapport à la migration")
+```
+
+```{r, echo = FALSE}
+ggsurvey(indiv_dist_pd, aes(x=as.factor(group1_rec), y=dist_min_long)) + 
+  geom_violin()+
+  geom_boxplot(width=0.1, color="grey", alpha=0.2)+
+  xlab("Rapport à la migration")+ylab("Distance à l'établissement long séjour le plus proche en mètres")
+```
+
+### Etablissement psychiatrique 
+
+```{r, echo = FALSE, fig.width = 8, fig.height=5}
+tb <- data.frame(cprop(svytable(~group1_rec +psy_5km_top, indiv_dist_pd))) %>% 
+  filter(group1_rec!="Total")
+
+ggplot(tb, aes(x = psy_5km_top, y= Freq, fill = group1_rec)) +
+  geom_bar(stat="identity", width=.5, position = "dodge")+labs(x = "Proximité", y = "Proportion", fill = "Rapport à la migration")
+```
+
+```{r, echo = FALSE}
+ggsurvey(indiv_dist_pd, aes(x=as.factor(group1_rec), y=dist_min_psy)) + 
+  geom_violin()+
+  geom_boxplot(width=0.1, color="grey", alpha=0.2)+
+  xlab("Rapport à la migration")+ylab("Distance à l'établissement psychiatrique le plus proche en mètres")
+```
+
+### Centre lutte cancer
+
+```{r, echo = FALSE, fig.width = 8, fig.height=5}
+tb <- data.frame(cprop(svytable(~group1_rec +cancer_5km_top, indiv_dist_pd))) %>% 
+  filter(group1_rec!="Total")
+
+ggplot(tb, aes(x = cancer_5km_top, y= Freq, fill = group1_rec)) +
+  geom_bar(stat="identity", width=.5, position = "dodge")+labs(x = "Proximité", y = "Proportion", fill = "Rapport à la migration")
+```
+
+```{r, echo = FALSE}
+ggsurvey(indiv_dist_pd, aes(x=as.factor(group1_rec), y=dist_min_cancer)) + 
+  geom_violin()+
+  geom_boxplot(width=0.1, color="grey", alpha=0.2)+
+  xlab("Rapport à la migration")+ylab("Distance au centre lutte cancer le plus proche en mètres")
+```
+
+## Sur les grandes villes (plus de 200 000 habitants){.tabset .tabset-fade}
+
+```{r, include=FALSE}
+indiv_dist_ville <- indiv_dist %>% filter(indiv_dist$tuu2017 %in% c("Unité urbaine de 200 000 à 1 999 999 habitants", "Unité urbaine de Paris"))
+indiv_dist_pd_ville <- svydesign(ids = indiv_dist_ville$ident_fa, data = indiv_dist_ville, weights = indiv_dist_ville$poidsi)
+```
+
+
+### Urgences
+
+```{r, echo = FALSE, fig.width = 8, fig.height=5}
+tb <- data.frame(cprop(svytable(~group1_rec + urg_5km_top, indiv_dist_pd_ville))) %>% 
+  filter(group1_rec!="Total")
+
+ggplot(tb, aes(x = urg_5km_top, y= Freq, fill = group1_rec)) +
+  geom_bar(stat="identity", width=.5, position = "dodge")+labs(x = "Proximité", y = "Proportion", fill = "Rapport à la migration")
+```
+
+
+```{r, echo = FALSE}
+
+ggsurvey(indiv_dist_pd_ville, aes(x=as.factor(group1_rec), y=dist_min_urg)) + 
+  geom_violin()+
+  geom_boxplot(width=0.1, color="grey", alpha=0.2)+xlab("Rapport à la migration")+ylab("Distance aux urgences les plus proches en mètres")
+
+```
+### Maternités
+
+```{r, echo = FALSE, fig.width = 8, fig.height=5}
+tb <- data.frame(cprop(svytable(~group1_rec + mat_5km_top, indiv_dist_pd_ville))) %>% 
+  filter(group1_rec!="Total")
+
+ggplot(tb, aes(x = mat_5km_top, y= Freq, fill = group1_rec)) +
+  geom_bar(stat="identity", width=.5, position = "dodge")+labs(x = "Proximité", y = "Proportion", fill = "Rapport à la migration")
+```
+
+```{r, echo = FALSE}
+ggsurvey(indiv_dist_pd_ville, aes(x=as.factor(group1_rec), y=dist_min_mat)) + 
+  geom_violin()+
+  geom_boxplot(width=0.1, color="grey", alpha=0.2)+
+  xlab("Rapport à la migration")+ylab("Distance à la maternité la plus proche en mètres")
+```
+
+### Centres de santé
+
+```{r, echo = FALSE, fig.width = 8, fig.height=5}
+tb <- data.frame(cprop(svytable(~group1_rec + centre_5km_top, indiv_dist_pd_ville))) %>% 
+  filter(group1_rec!="Total")
+
+ggplot(tb, aes(x = centre_5km_top, y= Freq, fill = group1_rec)) +
+  geom_bar(stat="identity", width=.5, position = "dodge")+labs(x = "Proximité", y = "Proportion", fill = "Rapport à la migration")
+```
+
+```{r, echo = FALSE}
+ggsurvey(indiv_dist_pd_ville, aes(x=as.factor(group1_rec), y=dist_min_centre)) + 
+  geom_violin()+
+  geom_boxplot(width=0.1, color="grey", alpha=0.2)+
+  xlab("Rapport à la migration")+ylab("Distance au centre de santé le plus proche en mètres")
+```
+
+### Centre de médecine préventive
+
+```{r, echo = FALSE, fig.width = 8, fig.height=5}
+tb <- data.frame(cprop(svytable(~group1_rec + prev_5km_top, indiv_dist_pd_ville))) %>% 
+  filter(group1_rec!="Total")
+
+ggplot(tb, aes(x = prev_5km_top, y= Freq, fill = group1_rec)) +
+  geom_bar(stat="identity", width=.5, position = "dodge")+labs(x = "Proximité", y = "Proportion", fill = "Rapport à la migration")
+```
+
+```{r, echo = FALSE}
+ggsurvey(indiv_dist_pd_ville, aes(x=as.factor(group1_rec), y=dist_min_prev)) + 
+  geom_violin()+
+  geom_boxplot(width=0.1, color="grey", alpha=0.2)+
+  xlab("Rapport à la migration")+ylab("Distance au centre de médecine préventive le plus proche en mètres")
+```
+
+### Pharmacies
+
+```{r, echo = FALSE, fig.width = 8, fig.height=5}
+tb <- data.frame(cprop(svytable(~group1_rec + pharma_5km_top, indiv_dist_pd_ville))) %>% 
+  filter(group1_rec!="Total")
+
+ggplot(tb, aes(x = pharma_5km_top, y= Freq, fill = group1_rec)) +
+  geom_bar(stat="identity", width=.5, position = "dodge")+labs(x = "Proximité", y = "Proportion", fill = "Rapport à la migration")
+```
+
+```{r, echo = FALSE}
+ggsurvey(indiv_dist_pd_ville, aes(x=as.factor(group1_rec), y=dist_min_pharma)) + 
+  geom_violin()+
+  geom_boxplot(width=0.1, color="grey", alpha=0.2)+
+  xlab("Rapport à la migration")+ylab("Distance à la pharmacie la plus proche en mètres")
+```
+
+### Etablissement court séjour
+
+```{r, echo = FALSE, fig.width = 8, fig.height=5}
+tb <- data.frame(cprop(svytable(~group1_rec + court_5km_top, indiv_dist_pd_ville))) %>% 
+  filter(group1_rec!="Total")
+
+ggplot(tb, aes(x = court_5km_top, y= Freq, fill = group1_rec)) +
+  geom_bar(stat="identity", width=.5, position = "dodge")+labs(x = "Proximité", y = "Proportion", fill = "Rapport à la migration")
+```
+
+```{r, echo = FALSE}
+ggsurvey(indiv_dist_pd_ville, aes(x=as.factor(group1_rec), y=dist_min_court)) + 
+  geom_violin()+
+  geom_boxplot(width=0.1, color="grey", alpha=0.2)+
+  xlab("Rapport à la migration")+ylab("Distance à l'établissement court séjour le plus proche en mètres")
+```
+
+### Etablissement moyen séjour
+
+```{r, echo = FALSE, fig.width = 8, fig.height=5}
+tb <- data.frame(cprop(svytable(~group1_rec + moyen_5km_top, indiv_dist_pd_ville))) %>% 
+  filter(group1_rec!="Total")
+
+ggplot(tb, aes(x = moyen_5km_top, y= Freq, fill = group1_rec)) +
+  geom_bar(stat="identity", width=.5, position = "dodge")+labs(x = "Proximité", y = "Proportion", fill = "Rapport à la migration")
+```
+
+```{r, echo = FALSE}
+ggsurvey(indiv_dist_pd_ville, aes(x=as.factor(group1_rec), y=dist_min_moyen)) + 
+  geom_violin()+
+  geom_boxplot(width=0.1, color="grey", alpha=0.2)+
+  xlab("Rapport à la migration")+ylab("Distance à l'établissement moyen séjour le plus proche en mètres")
+```
+
+
+### Etablissement long séjour 
+
+```{r, echo = FALSE, fig.width = 8, fig.height=5}
+tb <- data.frame(cprop(svytable(~group1_rec + long_5km_top, indiv_dist_pd_ville))) %>% 
+  filter(group1_rec!="Total")
+
+ggplot(tb, aes(x = long_5km_top, y= Freq, fill = group1_rec)) +
+  geom_bar(stat="identity", width=.5, position = "dodge")+labs(x = "Proximité", y = "Proportion", fill = "Rapport à la migration")
+```
+
+```{r, echo = FALSE}
+ggsurvey(indiv_dist_pd_ville, aes(x=as.factor(group1_rec), y=dist_min_long)) + 
+  geom_violin()+
+  geom_boxplot(width=0.1, color="grey", alpha=0.2)+
+  xlab("Rapport à la migration")+ylab("Distance à l'établissement long séjour le plus proche en mètres")
+```
+
+### Etablissement psychiatrique 
+
+```{r, echo = FALSE, fig.width = 8, fig.height=5}
+tb <- data.frame(cprop(svytable(~group1_rec + psy_5km_top, indiv_dist_pd_ville))) %>% 
+  filter(group1_rec!="Total")
+
+ggplot(tb, aes(x = psy_5km_top, y= Freq, fill = group1_rec)) +
+  geom_bar(stat="identity", width=.5, position = "dodge")+labs(x = "Proximité", y = "Proportion", fill = "Rapport à la migration")
+```
+
+```{r, echo = FALSE}
+ggsurvey(indiv_dist_pd_ville, aes(x=as.factor(group1_rec), y=dist_min_psy)) + 
+  geom_violin()+
+  geom_boxplot(width=0.1, color="grey", alpha=0.2)+
+  xlab("Rapport à la migration")+ylab("Distance à l'établissement psychiatrique le plus proche en mètres")
+```
+
+### Centre lutte cancer
+
+```{r, echo = FALSE, fig.width = 8, fig.height=5}
+tb <- data.frame(cprop(svytable(~group1_rec + cancer_5km_top, indiv_dist_pd_ville))) %>% 
+  filter(group1_rec!="Total")
+
+ggplot(tb, aes(x = cancer_5km_top, y= Freq, fill = group1_rec)) +
+  geom_bar(stat="identity", width=.5, position = "dodge")+labs(x = "Proximité", y = "Proportion", fill = "Rapport à la migration")
+```
+
+```{r, echo = FALSE}
+ggsurvey(indiv_dist_pd_ville, aes(x=as.factor(group1_rec), y=dist_min_cancer)) + 
+  geom_violin()+
+  geom_boxplot(width=0.1, color="grey", alpha=0.2)+
+  xlab("Rapport à la migration")+ylab("Distance au centre lutte cancer le plus proche en mètres")
+```

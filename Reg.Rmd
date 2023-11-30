@@ -1,0 +1,232 @@
+---
+title: "06_Reg_plot"
+author: "Clémence Bracq"
+date: "01/09/2023"
+output:
+  html_notebook: default
+  html_document:
+    df_print: paged
+  pdf_document: default
+editor_options:
+  markdown:
+    wrap: 72
+---
+
+# Modélisation {.tabset .tabset-fade}
+
+```{r libraries, include=FALSE}
+source("Libraries.R")
+```
+
+```{r base, include = FALSE}
+teo_dist_ident <- read_parquet("distances_etab.parquet")
+indiv_mod <- indiv %>% 
+  left_join(BDD_ctx, by = "ident_fa") %>% 
+  left_join(teo_dist_ident, by = "ident_fa")
+# indiv_mod_pd <- svydesign(ids = indiv_mod$ident_fa, data = indiv_mod, weights = indiv_mod$poidsi)  
+
+```
+
+## Accessibilité Fonction définition du modèle
+
+```{r}
+reg <- function(var) {
+   model <- glm(var ~   group1 +
+                  com_apl_mg +
+                  com_apl_psy+
+                  com_apl_gyn+
+                  com_apl_sagf+
+                  dist_min_mat+
+                  dist_min_psy+
+                  dist_min_urg+
+                  agenq +
+                  sexee #+
+                  # origine_tous_g2+
+                  # csnq_ego +
+                  # couplee +
+                  # nbenf +
+                  # durtotfrm +
+                  # a_rfami+
+                  # a_ramis+
+                  # a_retud+
+                  # a_rorig+
+                  # a_rquart+
+                  # tuu2017 +
+                  # l_immi +
+                  # iris_pct_sedent +
+                  # iris_pct_immi
+                , weights = poidsi_entier
+                ,data = indiv_mod 
+                ,family=binomial(link=logit))
+  return(model)}
+
+```
+Recoder valeurs manquantes
+
+
+```{r}
+indiv_mod$poidsi_entier <- round(indiv_mod$poidsi)
+
+```
+
+
+```{r, include = FALSE}
+reg2 <- function(var) {
+  model <- glm(var ~   group1 + 
+                  com_apl_mg +
+                  com_apl_psy+
+                  com_apl_gyn+
+                  com_apl_sagf+
+                  dist_min_mat+
+                  dist_min_psy+
+                  dist_min_urg+
+                  agenq +
+                  # sexee +
+                  origine_tous_g2+
+                  csnq_ego +
+                  couplee +
+                  nbenf +
+                  durtotfrm +
+                  a_rfami+
+                  a_ramis+
+                  a_retud+
+                  a_rorig+
+                  a_rquart+
+                  tuu2017 +
+                  l_immi +
+                  iris_pct_sedent +
+                  iris_pct_immi
+                , weights = poidsi_entier
+                ,data = indiv_mod 
+                ,family=binomial(link=logit))
+  return(model)}
+```
+
+
+```{r recodages, include = FALSE}
+
+# A améliorer avec labelled
+indiv_mod$s_renonc_gen_rec <- indiv_mod$s_renonc_gen %>%
+  fct_recode(
+    "1" = "A renoncé à aller voir un généraliste",
+    "0" = "N'a pas renoncé à aller voir un généraliste"
+  )%>%
+  as.character() %>%
+  as.numeric()
+
+indiv_mod$s_medeciq_g_rec <- indiv_mod$s_medeciq_g %>%
+  fct_recode(
+    NULL = "-1",
+    NULL = "-2",
+    "1" = "Modalité citée",
+    "0" = "Modalité non citée"
+  ) %>%
+  as.character() %>%
+  as.numeric()
+
+indiv_mod$frott_ap_25_rec <- indiv_mod$frott_ap_25 %>%
+  fct_recode(
+    "1" = "Pas de frottis",
+    "0" = "Frottis"
+  ) %>%
+  as.character() %>%
+  as.numeric()
+
+indiv_mod$nonrecours_psy_rec <- indiv_mod$nonrecours_psy %>%
+  fct_recode(
+    "1" = "Dépression et pas de recours à un psy",
+    "0" = "Dépression et recours à un psy"
+  ) %>%
+  as.character() %>%
+  as.numeric()
+
+indiv_mod$durtotfrm <- indiv_mod$durtotfrm %>% as.character() %>%
+  as.numeric()
+```
+
+```{r, include = FALSE}
+model_renonc <- reg(indiv_mod$s_renonc)
+model_renonc_medge <- reg(indiv_mod$s_renonc_gen_rec)
+model_pas_recours <- reg(indiv_mod$s_medeciq_g_rec)
+model_frottis <- reg2(indiv_mod$frott_ap_25_rec)
+model_psy <- reg(indiv_mod$nonrecours_psy_rec)
+```
+
+## Résultats{.tabset .tabset-fade}
+
+### Général
+
+```{r, echo = FALSE}
+modelsummary(list("Renoncement" = model_renonc, "Renoncement à médecin généraliste" = model_renonc_medge, "Pas de recours" = model_pas_recours, 
+                  "Pas de frottis" = model_frottis,
+                  "Dépression et pas de recours psy" = model_psy),
+             gof_omit = 'IC|Log|Adj|p\\.value|statistic|se_type',
+             stars = TRUE,
+#             output ="latex",
+             )
+
+# modelsummary(list("Naive OLS" = model_naive, "2SLS (by hand)" = second_stage),
+#              gof_omit = 'IC|Log|Adj|p\\.value|statistic|se_type', 
+#              stars = TRUE)
+```
+### Renoncement
+```{r, echo = FALSE}
+tbl_regression(model_renonc,
+               # "Renoncement à médecin généraliste" = model_renonc_medge, "Pas de recours" = model_pas_recours, "Pas de frottis" = model_frottis,"Dépression et pas de recours psy" = model_psy), 
+exponentiate = TRUE, output_options = list(encoding = "UTF-8"))
+
+```
+
+### Renoncement à médecin généraliste
+```{r, echo = FALSE}
+tbl_regression(model_renonc_medge,
+               # "Pas de recours" = model_pas_recours, "Pas de frottis" = model_frottis,"Dépression et pas de recours psy" = model_psy), 
+exponentiate = TRUE)
+
+```
+### Pas de recours
+```{r, echo = FALSE}
+tbl_regression(model_pas_recours,
+               # "Pas de frottis" = model_frottis,"Dépression et pas de recours psy" = model_psy), 
+exponentiate = TRUE)
+
+```
+
+### Pas de frottis
+```{r, echo = FALSE}
+tbl_regression(model_frottis,
+               # "Dépression et pas de recours psy" = model_psy), 
+exponentiate = TRUE)
+
+```
+
+### Dépression et pas de recours psy
+
+```{r, echo = FALSE}
+tbl_regression(model_psy, exponentiate = TRUE)
+
+```
+## Plot
+
+```{r}
+library(GGally)
+ggcoef_model(model_psy, exponentiate = TRUE)
+```
+
+
+```{r, echo = FALSE}
+# b <- list(geom_vline(xintercept = 0, color = 'black'))
+# cm <- c('DECISIONAP_RED'="LSC octroyée",
+#   'GRIL_PSY1' = 'Antécédent psychiatrique')
+# modelplot(list("Renoncement" = model_renonc, "Renoncement à médecin généraliste" = model_renonc_medge, "Pas de recours" = model_pas_recours, 
+#                # "Pas de frottis" = model_frottis, 
+#                "Dépression et pas de recours psy" = model_psy), 
+#           background = b, 
+#           # coef_map = cm,
+#           coef_omit = "Interc", 
+# )
+# # +theme(legend.position = c(.8, .2))
+# # +facet_grid(~model)+  theme(legend.position = "none")
+
+
+```

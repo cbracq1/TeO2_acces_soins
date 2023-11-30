@@ -1,0 +1,238 @@
+---
+title: "06_Reg_plot"
+author: "Clémence Bracq"
+date: "01/09/2023"
+output:
+  html_notebook: default
+  html_document:
+    df_print: paged
+  pdf_document: default
+editor_options:
+  markdown:
+    wrap: 72
+---
+
+# Modélisation {.tabset .tabset-fade}
+
+```{r libraries, include=FALSE}
+source("Libraries.R")
+```
+
+```{r base, include = FALSE}
+teo_dist_ident <- read_parquet("distances_etab.parquet")
+indiv_mod <- indiv %>% 
+  left_join(BDD_ctx, by = "ident_fa") %>% 
+  left_join(teo_dist_ident, by = "ident_fa")
+# indiv_mod_pd <- svydesign(ids = indiv_mod$ident_fa, data = indiv_mod, weights = indiv_mod$poidsi)  
+
+```
+
+```{r}
+indiv_mod <- indiv_mod %>% 
+  mutate(prodesante = ifelse(p_naf88 %in% c(88, 87, 86), 1, 0))
+```
+
+
+## Accessibilité Fonction définition du modèle
+
+```{r}
+indiv_mod <- indiv_mod %>% 
+  mutate(ville = ifelse(com_pop_ind_pond>= 25000, "Plus de 25 000 habitants", "Moins de 25000 habitants"))
+```
+
+```{r}
+indiv_mod <- indiv_mod %>% 
+  mutate(immigre = ifelse(group1=="Immigré (né étranger à l'étranger y compris réintégrés", 1, 0))
+```
+
+
+```{r}
+reg0 <- function(var) {
+     model <- lm_robust(var ~ origine_tous_g2#+
+                  # sexee+
+                  # agenq +
+                  # csnq_ego +
+                  # tailleville +
+                  # l_immi
+                , weights = poidsi_entier
+                ,data = indiv_mod)
+  return(model)}
+
+
+reg0_group1 <- function(var) {
+     model <- lm_robust(var ~ group1#+
+                  # sexee+
+                  # agenq +
+                  # csnq_ego +
+                  # tailleville +
+                  # l_immi
+                , weights = poidsi_entier
+                ,data = indiv_mod)
+  return(model)}
+
+reg1 <- function(var) {
+     model <- lm_robust(var ~ origine_tous_g2+
+                  # sexee+
+                  # agenq +
+                  # csnq_ego +
+                  tailleville #+
+                    # group1*tailleville
+                  # l_immi
+                , weights = poidsi_entier
+                ,data = indiv_mod)
+  return(model)}
+
+reg2 <- function(var) {
+     model <- lm_robust(var ~ origine_tous_g2+
+                  sexee+
+                  # agenq +
+                  # csnq_ego +
+                  tailleville #+
+                    # group1*tuu2017
+                  # l_immi
+                , weights = poidsi_entier
+                ,data = indiv_mod)
+  return(model)}
+
+reg3 <- function(var) {
+     model <- lm_robust(var ~ origine_tous_g2+
+                  sexee+
+                  agenq +
+                  # csnq_ego +
+                  tailleville #+
+                    # group1*tuu2017
+                  # l_immi
+                , weights = poidsi_entier
+                ,data = indiv_mod)
+  return(model)}
+
+reg4 <- function(var) {
+     model <- lm_robust(var ~ origine_tous_g2+
+                  sexee+
+                  agenq +
+                  csnq_ego +
+                  tailleville #+
+                    # group1*tuu2017
+                  # l_immi
+                , weights = poidsi_entier
+                ,data = indiv_mod)
+  return(model)}
+
+reg5 <- function(var) {
+     model <- lm_robust(var ~ origine_tous_g2+
+                  sexee+
+                  agenq +
+                  csnq_ego +
+                  tailleville +
+                    # group1*tuu2017
+                  l_immi
+                , weights = poidsi_entier
+                ,data = indiv_mod)
+  return(model)}
+
+
+reg6 <-  function(var) {
+     model <- lm_robust(var ~ origine_tous_g2+
+                  sexee+
+                  agenq +
+                  csnq_ego +
+                  tailleville +
+                    # group1*tuu2017
+                  l_immi+
+                    prodesante
+                , weights = poidsi_entier
+                ,data = indiv_mod)
+  return(model)}
+
+reg7 <-  function(var) {
+     model <- lm_robust(var ~ origine_tous_g2+
+                  sexee+
+                  agenq +
+                  csnq_ego +
+                  tailleville +
+                  l_immi+
+                    prodesante+
+                    group1*l_immi
+                , weights = poidsi_entier
+                ,data = indiv_mod)
+  return(model)}
+```
+
+
+```{r}
+indiv_mod$poidsi_entier <- round(indiv_mod$poidsi)
+
+```
+
+```{r}
+indiv_mod$origine_tous_g2 <- relevel(indiv_mod$origine_tous_g2, ref = 'Population sans ascendance migratoire directe')
+indiv_mod$group1 <- relevel(indiv_mod$group1, ref = "Population non immigrée ni originaire d'Outre-mer et descendant de deux parents non immigrés et non originaires d'Outre-mer")
+indiv_mod$tuu2017 <- relevel(indiv_mod$tuu2017, ref = "Unité urbaine de 200 000 à 1 999 999 habitants")
+indiv_mod$sexee <- relevel(indiv_mod$sexee, ref = "Masculin")
+indiv_mod$l_immi <- relevel(indiv_mod$l_immi, ref = "Presque pas ou aucun n'est d'origine immigrée")
+
+```
+
+```{r, include = FALSE}
+model_urg <- reg0(indiv_mod$dist_min_urg)
+model_urg_simple <- reg0_group1(indiv_mod$dist_min_urg)
+model_urg_ville <- reg1(indiv_mod$dist_min_urg)
+model_urg_sexe <- reg2(indiv_mod$dist_min_urg)
+model_urg_age <- reg3(indiv_mod$dist_min_urg)
+model_urg_csnq <- reg4(indiv_mod$dist_min_urg)
+model_urg_immi <- reg5(indiv_mod$dist_min_urg)
+model_urg_pro <- reg6(indiv_mod$dist_min_urg)
+model_interact <- reg7(indiv_mod$dist_min_urg)
+
+
+```
+
+
+
+
+## Résultats{.tabset .tabset-fade}
+
+### Général
+
+```{r, echo = FALSE}
+modelsummary(list(model_urg, model_urg_ville),
+             stars = TRUE,
+#             output ="latex",
+             )
+modelsummary(model_urg_simple,
+             stars = TRUE,
+#             output ="latex",
+             )
+
+```
+
+## Plot
+
+
+```{r, echo = FALSE}
+b <- list(geom_vline(xintercept = 0, color = 'black'))
+# cm <- c('DECISIONAP_RED'="LSC octroyée",
+#   'GRIL_PSY1' = 'Antécédent psychiatrique')
+mp <- modelplot(list(model_urg, model_urg_ville, model_urg_sexe, model_urg_age, model_urg_csnq, model_urg_immi, model_urg_pro, model_interact),
+          background = b,
+          # coef_map = cm,
+          coef_omit = "Interc|l_immiRefus (ne pas lire):group1Immigré (né étranger à l'étranger y compris réintégrés)|l_immiNSP (ne pas lire):group1Immigré (né étranger à l'étranger y compris réintégrés)|l_immiPresque tous sont d'origine immigrée:group1Originaire de l'Outre-mer|l_immiPlus de la moitié est d'origine immigrée:group1Originaire de l'Outre-mer|l_immiLa moitié est d'origine immigrée:group1Originaire de l'Outre-mer|l_immiMoins de la moitié est d'origine immigrée:group1Originaire de l'Outre-mer|l_immiRefus (ne pas lire):group1Originaire de l'Outre-mer|l_immiNSP (ne pas lire):group1Originaire de l'Outre-mer|l_immiPresque tous sont d'origine immigrée:group1Descendant G2 d'un ou deux immigré-s|l_immiPlus de la moitié est d'origine immigrée:group1Descendant G2 d'un ou deux immigré-s|l_immiLa moitié est d'origine immigrée:group1Descendant G2 d'un ou deux immigré-s|l_immiMoins de la moitié est d'origine immigrée:group1Descendant G2 d'un ou deux immigré-s|l_immiRefus (ne pas lire):group1Descendant G2 d'un ou deux immigré-s|l_immiNSP (ne pas lire):group1Descendant G2 d'un ou deux immigré-s|l_immiPresque tous sont d'origine immigrée:group1Descendant G2 d'un ou deux originaire-s de l'Outre-mer|l_immiPlus de la moitié est d'origine immigrée:group1Descendant G2 d'un ou deux originaire-s de l'Outre-mer|l_immiLa moitié est d'origine immigrée:group1Descendant G2 d'un ou deux originaire-s de l'Outre-mer|l_immiMoins de la moitié est d'origine immigrée:group1Descendant G2 d'un ou deux originaire-s de l'Outre-mer|l_immiRefus (ne pas lire):group1Descendant G2 d'un ou deux originaire-s de l'Outre-mer|l_immiNSP (ne pas lire):group1Descendant G2 d'un ou deux originaire-s de l'Outre-mer"
+)
+# +theme(legend.position = c(.8, .2))
+# +facet_grid(~model)+  theme(legend.position = "none")
+
+alpha_values <- ifelse(mp$data$p.value > 0.05, 0.3, 1)
+
+mp + theme_minimal() +
+  scale_alpha_manual(
+    values = alpha_values  )
+```
+
+
+```{r, echo = FALSE}
+modelplot(model_urg_simple,
+          background = b,
+          # coef_map = cm,
+          coef_omit = "Interc")
+
+```
