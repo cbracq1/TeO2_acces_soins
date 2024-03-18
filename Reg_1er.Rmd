@@ -1,0 +1,351 @@
+---
+title: "06_Reg_plot"
+author: "Clémence Bracq"
+date: "01/09/2023"
+output:
+  html_notebook: default
+  html_document:
+    df_print: paged
+  pdf_document: default
+editor_options:
+  markdown:
+    wrap: 72
+---
+
+# Modélisation {.tabset .tabset-fade}
+
+```{r libraries, include=FALSE}
+source("Libraries.R")
+```
+
+```{r base, include = FALSE}
+teo_dist_ident <- read_parquet("distances_etab.parquet")
+if (!exists("teo_dist_ident_lib")) {teo_dist_ident_lib <- read_parquet("distances_lib.parquet")}
+
+indiv_mod <- indiv %>% 
+  left_join(BDD_ctx, by = "ident_fa") %>% 
+  left_join(teo_dist_ident, by = "ident_fa") %>% 
+    left_join(teo_dist_ident_lib, by = "ident_fa")
+
+# indiv_mod_pd <- svydesign(ids = indiv_mod$ident_fa, data = indiv_mod, weights = indiv_mod$poidsi)  
+
+```
+
+```{r}
+indiv_mod <- indiv_mod %>% 
+  mutate(prodesante = ifelse(p_naf88 %in% c(88, 87, 86), 1, 0))
+indiv_mod <- indiv_mod %>% mutate(tailleville = ifelse(com_pop_ind_pond<= 25000, "moins de 25000 habitants", "Plus de 25000 habitants"))
+indiv_mod <- indiv_mod %>% 
+  mutate(iris_pct_imagh_afs = iris_pct_imagh + iris_pct_imafs) %>% 
+  mutate(iris_pct_imeu = iris_pct_imeus + iris_pct_imue28)
+
+indiv_mod <- indiv_mod %>% 
+  mutate(com_pct_imagh_afs = com_pct_imagh + com_pct_imafs) %>% 
+  mutate(com_pct_imeu = com_pct_imeus + com_pct_imue28)
+
+# indiv_mod <- indiv_mod %>%
+#   mutate(iris_pct_immi_top = ntile(iris_pct_immi, 3),
+#          iris_pct_immi_top = case_when(
+#            iris_pct_immi_top == 1 ~ "Premier tercile",
+#            iris_pct_immi_top == 2 ~ "Deuxième tercile",
+#            iris_pct_immi_top == 3 ~ "Troisième tercile"
+#          ))
+indiv_mod <- indiv_mod %>%
+  mutate(iris_pct_imagh_afs_cat = cut(iris_pct_imagh_afs, breaks = quantile(iris_pct_imagh_afs, probs=seq(0, 1, 1/3))))
+
+# indiv_mod <- indiv_mod %>%
+#   mutate(iris_pct_imagh_top = ntile(iris_pct_imagh, 3),
+#          iris_pct_imagh_top = case_when(
+#            iris_pct_imagh_top == 1 ~ "Premier tercile",
+#            iris_pct_imagh_top == 2 ~ "Deuxième tercile",
+#            iris_pct_imagh_top == 3 ~ "Troisième tercile"
+#          ))
+
+# indiv_mod <- indiv_mod %>%
+#   mutate(iris_pct_imafs_top = ntile(iris_pct_imafs, 3),
+#          iris_pct_imafs_top = case_when(
+#            iris_pct_imafs_top == 1 ~ "Premier tercile",
+#            iris_pct_imafs_top == 2 ~ "Deuxième tercile",
+#            iris_pct_imafs_top == 3 ~ "Troisième tercile"
+#          ))
+
+
+indiv_mod <- indiv_mod %>%
+  mutate(iris_pct_imasie_cat = cut(iris_pct_imasie, breaks = quantile(iris_pct_imasie, probs=seq(0, 1, 1/3))))
+
+# 
+# indiv_mod <- indiv_mod %>%
+#   mutate(indiv_mod <- indiv_mod %>% 
+# indiv_mod <- indiv_mod %>% 
+#   mutate(iris_pct_imagh_afs = iris_pct_imagh + iris_pct_imafs) %>%   mutate(iris_pct_imagh_afs = iris_pct_imagh + iris_pct_imafs) %>% iris_pct_imeus_top = ntile(iris_pct_imeus, 3),
+#          iris_pct_imeus_top = case_when(
+#            iris_pct_imeus_top == 1 ~ "Premier tercile",
+#            iris_pct_imeus_top == 2 ~ "Deuxième tercile",
+#            iris_pct_imeus_top == 3 ~ "Troisième tercile"
+#          ))
+# 
+# indiv_mod <- indiv_mod %>%
+#   mutate(iris_pct_imue28_top = ntile(iris_pct_imue28, 3),
+#          iris_pct_imue28_top = case_when(
+#            iris_pct_imue28_top == 1 ~ "Premier tercile",
+#            iris_pct_imue28_top == 2 ~ "Deuxième tercile",
+#            iris_pct_imue28_top == 3 ~ "Troisième tercile"
+#          ))
+
+indiv_mod <- indiv_mod %>%
+  mutate(iris_pct_imeu_cat = cut(iris_pct_imeu, breaks = quantile(iris_pct_imeu, probs=seq(0, 1, 1/3))))
+
+
+
+```
+
+
+## Accessibilité Fonction définition du modèle
+
+```{r}
+indiv_mod <- indiv_mod %>% 
+  mutate(ville = ifelse(com_pop_ind_pond>= 25000, "Plus de 25 000 habitants", "Moins de 25000 habitants"))
+```
+
+```{r}
+indiv_mod <- indiv_mod %>% 
+  mutate(immigre = ifelse(group1=="Immigré (né étranger à l'étranger y compris réintégrés", 1, 0))
+```
+
+```{r}
+## Recodage de indiv_mod$origine_tous_g2 en indiv_mod$origine_tous_g2_rec
+indiv_mod$origine_tous_g2_rec <- indiv_mod$origine_tous_g2 %>%
+  fct_recode(
+    "Population sans ascendance migratoire directe" = "Autres français nés hors de France métro",
+    "Population sans ascendance migratoire directe" = "Descendants d'autres français nés hors de france métro",
+    "Immigrés d'Algérie, Maroc ou Tunisie" = "Immigrés d'Algérie",
+    "Descendants d'immigré(s) originaires d'Algérie, du Maroc ou de la Tunisie" = "Descendants d'immigré(s) originaires d'Algérie",
+    "Immigrés d'Algérie, Maroc ou Tunisie" = "Immigrés du Maroc/Tunisie",
+    "Descendants d'immigré(s) originaires d'Algérie, du Maroc ou de la Tunisie" = "Descendants d'immigré(s) originaires du Maroc ou de Tunisie",
+    "Immigrés d'autres pays d'Afrique" = "Immigrés d'Afrique sahélienne",
+    "Descendants d'immigré(s) originaires d'autres pays d'Afrique" = "Descendants d'immigré(s) originaires d'Afrique sahélienne",
+    "Immigrés d'autres pays d'Afrique" = "Immigrés d'Afrique guinéenne ou centrale",
+    "Descendants d'immigré(s) originaires d'autres pays d'Afrique" = "Descendants d'immigré(s) originaires d'Afrique guinéenne ou centrale",
+    "Immigrés d'Asie" = "Immigrés d'Asie du Sud-est",
+    "Descendants d'immigré(s) originaires d'Asie" = "Descendants d'immigré(s) originaires d'Asie du Sud-est",
+    "Immigrés d'Asie" = "Immigrés de Chine",
+    "Immigrés d'Asie" = "Immigrés d'autres pays d'Asie",
+    "Descendants d'immigré(s) originaires d'Asie" = "Descendants d'immigré(s) originaires d'autres pays d'Asie",
+    "Immigrés du Portugal, d'Espagne ou d'Italie" = "Immigrés du Portugal",
+    "Descendants d'immigré(s) originaires du Portugal, d'Espagne ou d'Italie" = "Descendants d'immigré(s) originaires du Portugal",
+    "Immigrés du Portugal, d'Espagne ou d'Italie" = "Immigrés d'Espagne ou d'Italie",
+    "Descendants d'immigré(s) originaires du Portugal, d'Espagne ou d'Italie" = "Descendants d'immigré(s) originaires d'Espagne ou d'Italie",
+    "Immigrés d'autres pays d'Europe" = "Immigrés d'autres pays de l'UE27",
+    "Descendants d'immigré(s) originaires d'autres pays d'Europe" = "Descendants d'immigré(s) originaires d'autres pays de l'UE27"
+  )
+
+## Recodage de indiv_mod$m_irreg en indiv_mod$m_irreg_rec
+indiv_mod$m_irreg_rec <- indiv_mod$m_irreg %>%
+  fct_recode(
+    "Oui irreg" = "Oui",
+    "Non pas d'irreg" = "Non",
+    "NSP, refus, NA" = "Vous ne savez pas",
+    "NSP, refus, NA" = "Vous ne voulez pas répondre"
+  ) %>%
+  fct_explicit_na("NSP, refus, NA")
+```
+
+
+
+```{r}
+reg0 <- function(var) {
+     model <- lm_robust(var ~ origine_tous_g2_rec#+
+                  # sexee+
+                  # agenq +
+                  # csnq_ego +
+                  # tailleville +
+                  # l_immi
+                , weights = poidsi_entier
+                ,data = indiv_mod)
+  return(model)}
+
+
+reg0_group1 <- function(var) {
+     model <- lm_robust(var ~ group1#+
+                  # sexee+
+                  # agenq +
+                  # csnq_ego +
+                  # tailleville +
+                  # l_immi
+                , weights = poidsi_entier
+                ,data = indiv_mod)
+  return(model)}
+
+reg1 <- function(var) {
+     model <- lm_robust(var ~ origine_tous_g2_rec+
+                  # sexee+
+                  # agenq +
+                  # csnq_ego +
+                  tailleville #+
+                    # group1*tailleville
+                  # l_immi
+                , weights = poidsi_entier
+                ,data = indiv_mod)
+  return(model)}
+
+reg2 <- function(var) {
+     model <- lm_robust(var ~ origine_tous_g2_rec+
+                  sexee+
+                  # agenq +
+                  # csnq_ego +
+                  tailleville #+
+                    # group1*tuu2017
+                  # l_immi
+                , weights = poidsi_entier
+                ,data = indiv_mod)
+  return(model)}
+
+reg3 <- function(var) {
+     model <- lm_robust(var ~ origine_tous_g2_rec+
+                  sexee+
+                  # agenq +
+                  csnq_ego +
+                  tailleville #+
+                    # group1*tuu2017
+                  # l_immi
+                , weights = poidsi_entier
+                ,data = indiv_mod)
+  return(model)}
+
+reg4 <- function(var) {
+     model <- lm_robust(var ~ origine_tous_g2_rec+
+                  sexee+
+                  # agenq +
+                  csnq_ego +
+                    m_irreg_rec+
+                  tailleville #+
+                    # group1*tuu2017
+                  # l_immi
+                , weights = poidsi_entier
+                ,data = indiv_mod)
+  return(model)}
+
+reg5 <- function(var) {
+     model <- lm_robust(var ~ origine_tous_g2_rec+
+                  sexee+
+                  agenq +
+                  csnq_ego +
+                  tailleville +
+                    # group1*tuu2017                    
+                    m_irreg_rec+
+
+                  l_immi
+                , weights = poidsi_entier
+                ,data = indiv_mod)
+  return(model)}
+
+
+reg6 <-  function(var) {
+     model <- lm_robust(var ~ origine_tous_g2_rec+
+                  sexee+
+                  agenq +
+                  csnq_ego +
+                  tailleville +
+                    # group1*tuu2017
+                  l_immi+
+                  m_irreg_rec+
+                    prodesante
+                , weights = poidsi_entier
+                ,data = indiv_mod)
+  return(model)}
+
+reg7 <-  function(var) {
+     model <- lm_robust(var ~ origine_tous_g2_rec+
+                  sexee+
+                  agenq +
+                  csnq_ego +
+                  tailleville +
+                  l_immi+
+                                                            m_irreg_rec+
+
+                    prodesante+
+                    origine_tous_g2_rec*sexee
+                , weights = poidsi_entier
+                ,data = indiv_mod)
+  return(model)}
+```
+
+
+```{r}
+indiv_mod$poidsi_entier <- round(indiv_mod$poidsi)
+
+```
+
+```{r}
+indiv_mod$origine_tous_g2_rec <- relevel(indiv_mod$origine_tous_g2_rec, ref = 'Population sans ascendance migratoire directe')
+# indiv_mod$origine_tous_g2_rec <- relevel(indiv_mod$origine_tous_g2_rec, ref = 'France métropolitaine')
+indiv_mod$group1 <- relevel(indiv_mod$group1, ref = "Population non immigrée ni originaire d'Outre-mer et descendant de deux parents non immigrés et non originaires d'Outre-mer")
+indiv_mod$tuu2017 <- relevel(indiv_mod$tuu2017, ref = "Unité urbaine de 200 000 à 1 999 999 habitants")
+indiv_mod$sexee <- relevel(indiv_mod$sexee, ref = "Masculin")
+indiv_mod$l_immi <- relevel(indiv_mod$l_immi, ref = "Presque pas ou aucun n'est d'origine immigrée")
+
+```
+
+```{r, include = FALSE}
+model_urg <- reg0(indiv_mod$dist_min_urg)
+model_urg_simple <- reg0_group1(indiv_mod$dist_min_urg)
+model_urg_ville <- reg1(indiv_mod$dist_min_urg)
+model_urg_sexe <- reg2(indiv_mod$dist_min_urg)
+model_urg_age <- reg3(indiv_mod$dist_min_urg)
+model_urg_csnq <- reg4(indiv_mod$dist_min_urg)
+model_urg_immi <- reg5(indiv_mod$dist_min_urg)
+model_urg_pro <- reg6(indiv_mod$dist_min_urg)
+model_interact <- reg7(indiv_mod$dist_min_urg)
+
+
+```
+
+
+
+
+## Résultats{.tabset .tabset-fade}
+
+### Général
+
+```{r, echo = FALSE}
+modelsummary(list(model_urg, model_urg_ville),
+             stars = TRUE,
+#             output ="latex",
+             )
+modelsummary(model_urg_simple,
+             stars = TRUE,
+#             output ="latex",
+             )
+
+```
+
+## Plot
+
+
+```{r, echo = FALSE}
+b <- list(geom_vline(xintercept = 0, color = 'black'))
+# cm <- c('DECISIONAP_RED'="LSC octroyée",
+#   'GRIL_PSY1' = 'Antécédent psychiatrique')
+mp <- modelplot(list(model_urg, model_urg_ville, model_urg_sexe, model_urg_age, model_urg_csnq, model_urg_immi, model_urg_pro, model_interact),
+          background = b,
+          # coef_map = cm,
+          coef_omit = "Interc|l_immiRefus (ne pas lire):group1Immigré (né étranger à l'étranger y compris réintégrés)|l_immiNSP (ne pas lire):group1Immigré (né étranger à l'étranger y compris réintégrés)|l_immiPresque tous sont d'origine immigrée:group1Originaire de l'Outre-mer|l_immiPlus de la moitié est d'origine immigrée:group1Originaire de l'Outre-mer|l_immiLa moitié est d'origine immigrée:group1Originaire de l'Outre-mer|l_immiMoins de la moitié est d'origine immigrée:group1Originaire de l'Outre-mer|l_immiRefus (ne pas lire):group1Originaire de l'Outre-mer|l_immiNSP (ne pas lire):group1Originaire de l'Outre-mer|l_immiPresque tous sont d'origine immigrée:group1Descendant G2 d'un ou deux immigré-s|l_immiPlus de la moitié est d'origine immigrée:group1Descendant G2 d'un ou deux immigré-s|l_immiLa moitié est d'origine immigrée:group1Descendant G2 d'un ou deux immigré-s|l_immiMoins de la moitié est d'origine immigrée:group1Descendant G2 d'un ou deux immigré-s|l_immiRefus (ne pas lire):group1Descendant G2 d'un ou deux immigré-s|l_immiNSP (ne pas lire):group1Descendant G2 d'un ou deux immigré-s|l_immiPresque tous sont d'origine immigrée:group1Descendant G2 d'un ou deux originaire-s de l'Outre-mer|l_immiPlus de la moitié est d'origine immigrée:group1Descendant G2 d'un ou deux originaire-s de l'Outre-mer|l_immiLa moitié est d'origine immigrée:group1Descendant G2 d'un ou deux originaire-s de l'Outre-mer|l_immiMoins de la moitié est d'origine immigrée:group1Descendant G2 d'un ou deux originaire-s de l'Outre-mer|l_immiRefus (ne pas lire):group1Descendant G2 d'un ou deux originaire-s de l'Outre-mer|l_immiNSP (ne pas lire):group1Descendant G2 d'un ou deux originaire-s de l'Outre-mer"
+)
+# +theme(legend.position = c(.8, .2))
+# +facet_grid(~model)+  theme(legend.position = "none")
+
+alpha_values <- ifelse(mp$data$p.value > 0.05, 0.3, 1)
+
+mp + theme_minimal() +
+  scale_alpha_manual(
+    values = alpha_values  )
+```
+
+
+```{r, echo = FALSE}
+modelplot(model_urg_simple,
+          background = b,
+          # coef_map = cm,
+          coef_omit = "Interc")
+
+```

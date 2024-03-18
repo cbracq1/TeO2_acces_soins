@@ -1,5 +1,5 @@
 ### Libraries
-
+library(xtable)
 library(modelsummary)
 library(questionr)
 library(tidyverse)
@@ -16,3 +16,9 @@ library(sf)#calcul distance géo
 library(estimatr)
 library(scales)
 library(cowplot)
+
+# Pour les AFM
+library(FactoMineR)
+library(explor)
+library(Factoshiny)
+library(corrplot)

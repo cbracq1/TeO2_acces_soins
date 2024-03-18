@@ -1,0 +1,465 @@
+---
+title: "Memoire_final"
+author: "Clémence Bracq"
+date: "2024-02-08"
+output:
+  pdf_document: default
+  html_document:
+    df_print: paged
+  html_notebook: default
+editor_options:
+  markdown:
+    wrap: 72
+---
+
+# Productions utilisées dans rapport
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+```{r libraries, include=FALSE}
+source("Libraries.R")
+```
+
+```{r base, include = FALSE}
+source("Base_utf.R")
+```
+
+## Statistiques descriptives
+### Ségrégation
+
+En moyenne, les enquêtés habitent dans des IRIS composés de...
+```{r}
+mean(indiv_bdd$iris_pct_immi)
+```
+... % d'immigrés. 
+
+Parmi les immigrés seulement : 
+```{r}
+test <-indiv_bdd %>% filter(group1!="Immigré (né étranger à l'étranger y compris réintégrés)") 
+mean(test$iris_pct_immi, na.rm = TRUE)
+rm(test)
+```
+
+Quantiles pour tous les enquêtés :
+```{r}
+indiv_bdd$iris_pct_immi %>% quantile(probs = seq(0.1, 1, by = .01), na.rm = TRUE)
+```
+
+Proportion perçue selon le rapport à la migration :
+```{r, echo=FALSE}
+tb <- cprop(svytable(~ l_immi_rec + g2, indiv_bdd_pd))
+tb
+# xtable(tb)
+df <- as.data.frame(tb)
+df %>%
+  filter(!(l_immi_rec %in% "Total")) %>%
+  filter(!(g2 %in% "Ensemble")) %>%
+  ggplot() +
+  aes(x = g2, y = Freq, fill = l_immi_rec) +
+  geom_col() + 
+  scale_fill_manual(
+    values = c(`Presque tous sont d'origine immigrée` = "#D7C78F",
+               `Plus de la moitié est d'origine immigrée` = "#FAC96E",
+               `La moitié est d'origine immigrée` = "#F99536",
+               `Moins de la moitié est d'origine immigrée` = "#CE5720",
+               `Presque pas ou aucun n'est d'origine immigrée` = "#B8250C",
+               `Refus ou ne sait pas` = "#BBB9B9")) +
+  theme_minimal()+
+  labs(x = "Rapport à la migration", y="Proportion", fill = "Les habitants de mon quartier sont ...")
+```
+Comparaison des 2 indicateurs :
+```{r, echo =FALSE, fig.height=5}
+ggplot(indiv_bdd, aes(x=iris_pct_imeu, y = l_immi, fill= group1_DROM)) +
+    geom_boxplot() +
+    theme(legend.position="bottom",
+          legend.direction = "vertical") +
+    xlab("Proportion d'immigrés originaires de l'UE à 28\n dans l'IRIS dans laquelle réside l'enquêté")+ylab("Part de personnes d'origine immigrée \ndans le quartier de résidence (déclaratif)")+scale_fill_discrete(name = "Rapport à la migration de l'enquêté")
+```
+```{r, echo =FALSE, fig.height=5}
+ggplot(indiv_bdd, aes(x=iris_pct_imagh_afs, y = l_immi, fill= group1_DROM)) +
+    geom_boxplot() +
+    theme(legend.position="bottom",
+          legend.direction = "vertical") +
+    xlab("Proportion d'immigrés originaires du Maghreb ou d'Afrique subsaharienne\n dans l'IRIS dans laquelle réside l'enquêté")+ylab("Part de personnes d'origine immigrée \ndans le quartier de résidence (déclaratif)")+scale_fill_discrete(name = "Rapport à la migration de l'enquêté")
+```
+
+### Accessibilité
+
+```{r}
+a <- ggsurvey(indiv_dist_pd,  aes(x = com_pop_ind_pond, y = com_apl_mg)) +
+  geom_point(alpha = 0.1)+
+  geom_smooth() +
+  theme_minimal()+
+  scale_x_continuous(breaks = c(0, 25000, 200000), labels = label_number(accuracy = 1))+
+  xlab("Population de la commune")+ylab("APL aux médecins\n généralistes")+labs(titre = "Généralistes")
+
+b <- ggsurvey(indiv_dist_pd,  aes(x = com_pop_ind_pond, y = com_apl_ped)) +
+  geom_point(alpha = 0.1)+
+  geom_smooth() +
+  theme_minimal()+
+  scale_x_continuous(breaks = c(0, 25000, 200000), labels = label_number(accuracy = 1))+
+  xlab("Population de la commune")+ylab("APL aux \n pédiatres")+labs(titre = "Pédiatres")
+
+c <- ggsurvey(indiv_dist_pd,  aes(x = com_pop_ind_pond, y = com_apl_sagf)) +
+  geom_point(alpha = 0.1)+
+  geom_smooth() +
+  theme_minimal()+
+  scale_x_continuous(breaks = c(0, 25000, 200000), labels = label_number(accuracy = 1))+
+  xlab("Population de la commune")+ylab("APL aux \n sages-femmes")+
+  labs(titre = "Sages-femmes")
+
+d <- ggsurvey(indiv_dist_pd,  aes(x = com_pop_ind_pond, y = com_apl_gyn)) +
+  geom_point(alpha = 0.1)+
+  geom_smooth() +
+  theme_minimal()+
+  scale_x_continuous(breaks = c(0, 25000, 200000), labels = label_number(accuracy = 1))+
+  xlab("Population de la commune")+ylab("APL aux \n gynécologues")+
+  labs(titre = "Gynécologues")
+
+e <- ggsurvey(indiv_dist_pd,  aes(x = com_pop_ind_pond, y = com_apl_dent)) +
+  geom_point(alpha = 0.1)+
+  geom_smooth() +
+  theme_minimal()+
+  scale_x_continuous(breaks = c(0, 25000, 200000), labels = label_number(accuracy = 1))+
+  xlab("Population de la commune")+ylab("APL aux \n dentistes")+
+  labs(titre = "Dentistes")
+
+f <- ggsurvey(indiv_dist_pd,  aes(x = com_pop_ind_pond, y = com_apl_oph)) +
+  geom_point(alpha = 0.1)+
+  geom_smooth() +
+  theme_minimal()+
+  scale_x_continuous(breaks = c(0, 25000, 200000), labels = label_number(accuracy = 1))+
+  xlab("Population de la commune")+ylab("APL aux \n ophtalmologues")+
+  labs(titre = "Ophtalmologues")
+
+
+g <- ggsurvey(indiv_dist_pd,  aes(x = com_pop_ind_pond, y = com_apl_psy)) +
+  geom_point(alpha = 0.1)+
+  geom_smooth() +
+  theme_minimal()+
+  scale_x_continuous(breaks = c(0, 25000, 200000), labels = label_number(accuracy = 1))+
+  xlab("Population de la commune")+ylab("APL aux \n psychiatres")+
+  labs(titre = "Psychiatres")
+
+h <- ggsurvey(indiv_dist_pd,  aes(x = com_pop_ind_pond, y = com_apl_phar)) +
+  geom_point(alpha = 0.1)+
+  geom_smooth() +
+  theme_minimal()+
+  scale_x_continuous(breaks = c(0, 25000, 200000), labels = label_number(accuracy = 1))+
+  xlab("Population de la commune")+ylab("APL aux \n pharmacies")+
+  labs(titre = "Pharmacies")
+
+plot_grid(a, b, c, d, e, f, g, h, ncol = 2)
+
+```
+
+
+
+```{r, fig.height=10}
+
+
+i<- ggsurvey(indiv_dist_pd,  aes(x = com_pop_ind_pond, y = lib_dist_min_medge)) +
+  geom_point(alpha = 0.1)+
+  geom_smooth() +
+  theme_minimal()+
+  scale_x_continuous(breaks = c(0, 25000, 200000), labels = label_number(accuracy = 1))+
+  xlab("Population de la commune")+ylab("Distance au médecin \ngénéraliste le plus proche")
+
+j<- ggsurvey(indiv_dist_pd,  aes(x = com_pop_ind_pond, y = lib_dist_min_ped)) +
+  geom_point(alpha = 0.1)+
+  geom_smooth() +
+  theme_minimal()+
+  scale_x_continuous(breaks = c(0, 25000, 200000), labels = label_number(accuracy = 1))+
+  xlab("Population de la commune")+ylab("Distance au pédiatre \n le plus proche")
+
+k <- ggsurvey(indiv_dist_pd,  aes(x = com_pop_ind_pond, y = lib_dist_min_sf)) +
+  geom_point(alpha = 0.1)+
+  geom_smooth() +
+  theme_minimal()+
+  scale_x_continuous(breaks = c(0, 25000, 200000), labels = label_number(accuracy = 1))+
+  xlab("Population de la commune")+ylab("Distance à la \nsage-femme la plus proche")
+
+l<- ggsurvey(indiv_dist_pd,  aes(x = com_pop_ind_pond, y = lib_dist_min_gynéco)) +
+    geom_point(alpha = 0.1)+
+    geom_smooth() +
+    theme_minimal()+
+    scale_x_continuous(breaks = c(0, 25000, 200000), labels = label_number(accuracy = 1))+
+    xlab("Population de la commune")+ylab("Distance au gynécologue \nle plus proche")
+
+m<- ggsurvey(indiv_dist_pd,  aes(x = com_pop_ind_pond, y = lib_dist_min_dent)) +
+    geom_point(alpha = 0.1)+
+    geom_smooth() +
+    theme_minimal()+
+    scale_x_continuous(breaks = c(0, 25000, 200000), labels = label_number(accuracy = 1))+
+    xlab("Population de la commune")+ylab("Distance au dentiste \nle plus proche")
+n<- ggsurvey(indiv_dist_pd,  aes(x = com_pop_ind_pond, y = lib_dist_min_ophtalmo)) +
+    geom_point(alpha = 0.1)+
+    geom_smooth() +
+    theme_minimal()+
+    scale_x_continuous(breaks = c(0, 25000, 200000), labels = label_number(accuracy = 1))+
+    xlab("Population de la commune")+ylab("Distance à l'ophtalmologue \nle plus proche")
+
+o<- ggsurvey(indiv_dist_pd,  aes(x = com_pop_ind_pond, y = lib_dist_min_psychiatre)) +
+  geom_point(alpha = 0.1)+
+  geom_smooth() +
+  theme_minimal()+
+  scale_x_continuous(breaks = c(0, 25000, 200000), labels = label_number(accuracy = 1))+
+  xlab("Population de la commune")+ylab("Distance au psychiatre \nle plus proche")
+
+p <- ggsurvey(indiv_dist_pd,  aes(x = com_pop_ind_pond, y = dist_min_pharma)) +
+  geom_point(alpha = 0.1)+
+  geom_smooth() +
+  theme_minimal()+
+  scale_x_continuous(breaks = c(0, 25000, 200000), labels = label_number(accuracy = 1))+
+  xlab("Population de la commune")+ylab("Distance à la pharmacie \nla plus proche")
+
+plot_grid(i, j, k, l, m, n, o, p, ncol = 2)
+
+```
+
+```{r, height = 0.5}
+ggsurvey(indiv_dist_pd,  aes(x = com_pop_ind_pond, y = dist_min_urg)) +
+  geom_point(alpha = 0.1)+
+  geom_smooth() +
+  theme_minimal()+
+  scale_x_continuous(breaks = c(0, 25000, 200000), labels = label_number(accuracy = 1))+
+  xlab("Population de la commune")+ylab("Distance aux urgences\n les plus proches")
+```
+
+
+```{r}
+indiv_dist_ville <- indiv_dist %>% filter(indiv_dist$com_pop_ind_pond >= 30000)
+## Recodage de indiv_dist_ville$group1
+indiv_dist_ville$group1 <- indiv_dist_ville$group1 %>%
+  fct_recode(
+    "Population non immigrée ni originaire d'Outre-mer et\ndescendant de deux parents non immigrés et non originaires d'Outre-mer" = "Population non immigrée ni originaire d'Outre-mer et descendant de deux parents non immigrés et non originaires d'Outre-mer"
+  )
+indiv_dist_pd_ville <- svydesign(ids = indiv_dist_ville$ident_fa, data = indiv_dist_ville, weights = indiv_dist_ville$poidsi)
+
+```
+
+```{r}
+df3 <- as.data.frame(svyby(~ lib_dist_min_medge, ~group1, indiv_dist_pd_ville, svymean, na.rm =TRUE))
+
+ggplot(df3) +
+  aes(x = group1, y = lib_dist_min_medge, fill = group1) +
+  geom_col() +
+  scale_fill_hue(direction = 1) +
+  labs(x = element_blank(),
+       y = "Distance moyenne au médecin \ngénéraliste le plus proche",
+       fill = "Rapport à la migration"
+  ) +
+  theme(axis.text.x = element_blank(),
+        legend.position="bottom",
+        legend.direction = "vertical")+ylim(0, 500)
+rm(df3)
+```
+
+```{r}
+df4 <- as.data.frame(svyby(~ lib_dist_min_medge, ~l_immi, indiv_dist_pd_ville, svymean, na.rm =TRUE))
+
+ggplot(df4) +
+  aes(x = l_immi, y = lib_dist_min_medge, fill = l_immi) +
+  geom_col() +
+  scale_fill_manual(
+    values = c(`Presque tous sont d'origine immigrée` = "#D7C78F",
+               `Plus de la moitié est d'origine immigrée` = "#FAC96E",
+               `La moitié est d'origine immigrée` = "#F99536",
+               `Moins de la moitié est d'origine immigrée` = "#CE5720",
+               `Presque pas ou aucun n'est d'origine immigrée` = "#B8250C",
+               `Refus (ne pas lire)` = "#BBB9B9",
+               `NSP (ne pas lire)` = "#383737")
+  ) +
+  labs(x = element_blank(),
+    y = "Distance moyenne au médecin \ngénéraliste le plus proche",
+    fill = "Dans votre quartier, les habitants sont..."
+  ) +
+  theme(axis.text.x = element_blank(),
+        legend.position="bottom",
+        legend.direction = "vertical")+ylim(0,500)
+rm(df4)
+```
+
+```{r}
+dfb <- as.data.frame(svyby(~ dist_min_urg, ~group1, indiv_dist_pd_ville, svymean, na.rm =TRUE))
+
+ggplot(dfb) +
+  aes(x = group1, y = dist_min_urg, fill = group1) +
+  geom_col() +
+  scale_fill_hue(direction = 1) +
+  labs(x = element_blank(),
+       y = "Distance aux urgences les plus proches",
+       fill = "Rapport à la migration"
+  ) +
+  theme(axis.text.x = element_blank(),
+        legend.position="bottom",
+        legend.direction = "vertical")+ylim(0, 3000)
+rm(dfb)
+```
+
+```{r}
+df2b <- as.data.frame(svyby(~ dist_min_urg, ~l_immi, indiv_dist_pd_ville, svymean, na.rm =TRUE))
+
+ggplot(df2b) +
+  aes(x = l_immi, y = dist_min_urg, fill = l_immi) +
+  geom_col() +
+  scale_fill_manual(
+    values = c(`Presque tous sont d'origine immigrée` = "#D7C78F",
+               `Plus de la moitié est d'origine immigrée` = "#FAC96E",
+               `La moitié est d'origine immigrée` = "#F99536",
+               `Moins de la moitié est d'origine immigrée` = "#CE5720",
+               `Presque pas ou aucun n'est d'origine immigrée` = "#B8250C",
+               `Refus (ne pas lire)` = "#BBB9B9",
+               `NSP (ne pas lire)` = "#383737")
+  ) +
+  labs(x = element_blank(),
+       y = "Distance moyenne aux urgences les plus proches",
+       fill = "Dans votre quartier, les habitants sont..."
+  ) +
+  theme(axis.text.x = element_blank(),
+        legend.position="bottom",
+        legend.direction = "vertical")+ylim(0,3000)
+rm(df2b)
+```
+
+### Recours aux soins
+
+```{r base2, include = FALSE}
+indiv_bdd <- indiv_bdd %>% 
+  mutate(s_pqren_loin_tps = case_when((s_pqren_g == "Modalité citée" | s_pqren_h== "Modalité citée") ~"A renoncé par manque de temps ou à cause de la distance",
+                                      TRUE ~"N'a pas renoncé par manque de temps ou à cause de la distance")) 
+
+
+
+
+indiv_bdd$l_immi_rec <- indiv_bdd$l_immi %>%
+  fct_recode(
+    "Refus ou ne sait pas" = "Refus (ne pas lire)",
+    "Refus ou ne sait pas" = "NSP (ne pas lire)"
+  )
+
+
+
+
+indiv_bdd$s_etat_rec <- indiv_bdd$s_etat %>%
+  fct_recode(
+    "Refus ou ne sait pas" = "Refus (ne pas lire)",
+    "Refus ou ne sait pas" = "NSP (ne pas lire)",
+    "Bon ou très bon" = "Très bon",
+    "Bon ou très bon" = "Bon",
+    "Moyen, mauvais ou très mauvais" = "Moyen",
+    "Moyen, mauvais ou très mauvais" = "Mauvais",
+    "Moyen, mauvais ou très mauvais" = "Très mauvais"
+  )
+
+indiv_bdd$s_medeciq_g_rec <- indiv_bdd$s_medeciq_g %>%
+  fct_recode(
+    "Refus ou ne sait pas" = "-1",
+    "Refus ou ne sait pas" = "-2",
+    "N'a pas consulté de médecin dans l'année" = "Modalité citée",
+    "A consulté un médecin dans l'année" = "Modalité non citée"
+  )
+indiv_bdd <- indiv_bdd %>% 
+  mutate(s_medeciq_gen = case_when(s_medeciq_flag == "A répondu" ~  s_medeciq_a,TRUE ~ s_medeciq_flag))
+indiv_bdd$s_medeciq_gen_rec <- indiv_bdd$s_medeciq_gen %>%
+  fct_recode(
+    "Refus ou ne sait pas" = "-1",
+    "Refus ou ne sait pas" = "-2",
+    "A consulté un médecin généraliste dans les 12 derniers mois" = "Modalité citée",
+    "N'a pas consulté un médecin généraliste dans les 12 derniers mois" = "Modalité non citée"
+  )
+
+indiv_bdd$s_renonc_rec <- indiv_bdd$s_renonc %>%
+  fct_recode(
+    "A renoncé à des soins dans les 12 derniers mois" = "Oui",
+    "N'a pas renoncé à des soins dans les 12 derniers mois" = "Non",
+    "Refus ou ne sait pas" = "Refus (ne pas lire)",
+    "Refus ou ne sait pas" = "NSP (ne pas lire)"
+  )
+
+indiv_bdd_pd <- svydesign(ids = indiv_bdd$ident_fa, data = indiv_bdd, weights = indiv_bdd$poidsi)
+```
+
+Recours
+```{r}
+tb <- cprop(svytable(~ s_etat_rec + natif, indiv_bdd_pd))
+tb
+# xtable(tb, digits = 1)
+(84.4/15.3)/(80.6/18.8)
+
+
+
+tb <- cprop(svytable(~ s_medeciq_g_rec + natif, indiv_bdd_pd))
+tb
+# xtable(tb, digits = 1)
+(94.5/5.2)/(93.5/6)
+
+tb <- cprop(svytable(~ s_medeciq_g_rec + l_immi_rec, indiv_bdd_pd))
+tb
+# xtable(tb, digits = 1)
+
+tb <- cprop(svytable(~ s_medeciq_gen_rec + natif, indiv_bdd_pd))
+tb
+# xtable(tb, digits = 1)
+
+tb <- cprop(svytable(~ s_medeciq_gen_rec + l_immi_rec, indiv_bdd_pd))
+tb
+# xtable(tb, digits = 1)
+(84.4/15.5)/(87.4/12.6)
+
+tb <- cprop(svytable(~ s_medeciq_nbval + g2, indiv_bdd_pd))
+tb
+# xtable(tb, digits = 1)
+
+tb <- cprop(svytable(~ s_medeciq_nbval + l_immi_rec, indiv_bdd_pd))
+tb
+# xtable(tb, digits = 1)
+
+
+df <- as.data.frame(tb) %>% filter(s_medeciq_nbval!="Total") #%>% filter(g2!="Total")
+df$s_medeciq_nbval<- as.numeric(df$s_medeciq_nbval)
+svyby(~ s_medeciq_nbval, ~g2, indiv_bdd_pd, svymean, na.rm =TRUE)
+svyby(~ s_medeciq_nbval, ~g2, indiv_bdd_pd, svyquantile, quantiles=0.5,  na.rm=TRUE)
+
+
+tb <- cprop(svytable(~ frott_ap_25 + natif, indiv_bdd_pd))
+tb
+# xtable(tb, digits = 1)
+```
+
+Renoncement
+```{r}
+#RENONCEMENT
+
+tb <- cprop(svytable(~ s_renonc_rec + natif, indiv_bdd_pd))
+tb
+# xtable(tb, digits = 1)
+
+indiv_renonc <- indiv_bdd %>% filter(s_renonc == "Oui") 
+indiv_renonc_pd <- svydesign(ids = indiv_renonc$ident_fa, data = indiv_renonc, weights = indiv_renonc$poidsi)
+
+tb <- cprop(svytable(~ s_renonc_gen + natif, indiv_renonc_pd))
+# xtable(tb, digits = 1)
+(21.8/78.2)/(17.2/82.8)
+
+tb <- cprop(svytable(~ s_pqren_loin_tps + natif, indiv_renonc_pd))
+tb
+# xtable(tb, digits = 1)
+(29/71)/(24.8/75.2)
+
+
+tb <- cprop(svytable(~ s_renonc_rec + l_immi_rec, indiv_bdd_pd))
+tb
+# xtable(tb, digits = 1)
+
+
+tb <- cprop(svytable(~ s_renonc_gen + l_immi_rec, indiv_renonc_pd))
+tb
+# xtable(tb, digits = 1)
+
+tb <- cprop(svytable(~ s_pqren_loin_tps + l_immi_rec, indiv_renonc_pd))
+tb
+# xtable(tb, digits = 1)
+```
