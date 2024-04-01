@@ -1,0 +1,178 @@
+---
+title: "HCPC"
+author: "Clémence Bracq"
+date: "2024-03-28"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+```{r libraries, include=FALSE}
+source("Libraries.R")
+```
+
+```{r bases, include=FALSE}
+source("Base.R")
+```
+
+Suite ACM
+
+```{r}
+hc <- HCPC(res, nb.clust = 15, graph=F)
+```
+
+
+```{r}
+barplot(hc$call$t$inert.gain[1:20],horiz = T,main="Gain d'inertie intra sur les 20 dernières agrégations ",
+          col="lightblue",border = "grey")
+# + geom_vline(xintercept = factor(c(5, 7, 10, 14, 15)), linetype = "dashed", color = "black")
+```
+
+```{r}
+plot(hc, choice ="tree")
+
+```
+
+```{r}
+hc$desc.ind$para
+```
+
+```{r}
+hc$desc.ind$dist
+```
+
+```{r}
+hc$data.clust # contient la classe pour chaque individu
+names(hc$data.clust) # pour rep�rer le num�ro de la colonne "clust" (ici : 12)
+clust <- hc$data.clust[,39] # on ne conserve que la colonne contenant les classes
+
+acm <- indiv_dist %>% select(s_medeciq_a, s_medeciq_b, s_medeciq_c, s_medeciq_e, s_medeciq_f, s_medeciq_g, s_etat_rec, s_ren_queren_spe, s_ren_queren_gen, s_ren_queren_dent, s_ren_queren_medoc, s_ren_queren_lun, s_ren_queren_analyses, s_ren_queren_imagerie,  s_rec_ren_gen, s_rec_ren_spe, s_renonc_acm, s_medeciq_acm, s_ren_pqren_cout, s_ren_pqren_attente, s_ren_pqren_qui, s_ren_pqren_papier, s_ren_pqren_peur, s_ren_pqren_tps_loin,l_immi, group1, origine_tous_g2, sexee, csnq_ego, s_secuq, s_secuq_refus, dureeorigine,  s_traite, s_traite_peau,  s_maladi, s_limite, agenq, imc,ident_fa, poidsi) %>% data.frame() %>% 
+  filter(!is.na(s_medeciq_a)&!is.na(s_medeciq_b)&!is.na(s_medeciq_c)&!is.na(s_medeciq_e)&!is.na(s_medeciq_f))
+
+acm_classe <- cbind(acm, clust)
+```
+
+```{r}
+acm_classe_pd <-svydesign(ids = acm_classe$ident_fa, data = acm_classe, weights = acm_classe$poidsi)
+
+cprop(svytable(~clust+originegeo, acm_classe_pd))
+```
+```{r}
+acm_classe_chine <- acm_classe %>% filter(origine_tous_g2 == "Immigrés de Chine")
+acm_classe_chine_pd <-svydesign(ids = acm_classe_chine$ident_fa, data = acm_classe_chine, weights = acm_classe_chine$poidsi)
+
+cprop(svytable(~clust+sexee, acm_classe_chine_pd))
+
+```
+
+
+```{r}
+library(GGally)
+ggtable(
+  acm_classe, 
+  columnsX = "clust", 
+  columnsY = 1:6,
+  mapping = aes(weight = poidsi),
+  cells = "col.prop",
+  fill = "std.resid"
+) + 
+  labs(fill = "Résidus standardisés du Chi²") +
+  theme(legend.position = "bottom")
+```
+
+```{r}
+ggtable(
+  acm_classe, 
+  columnsX = "clust", 
+  columnsY = 7:9,
+  mapping = aes(weight = poidsi),
+  cells = "col.prop",
+  fill = "std.resid"
+) + 
+  labs(fill = "Résidus standardisés du Chi²") +
+  theme(legend.position = "bottom")
+```
+
+```{r}
+ggtable(
+  acm_classe, 
+  columnsX = "clust", 
+  columnsY = "group1",
+  mapping = aes(weight = poidsi),
+  cells = "col.prop",
+  fill = "std.resid"
+) + 
+  labs(fill = "Résidus standardisés du Chi²") +
+  theme(legend.position = "bottom")
+```
+
+```{r}
+ggtable(
+  acm_classe, 
+  columnsX = "clust", 
+  columnsY = c("sexee", "s_traite"),
+  mapping = aes(weight = poidsi),
+  cells = "col.prop",
+  fill = "std.resid"
+) + 
+  labs(fill = "Résidus standardisés du Chi²") +
+  theme(legend.position = "bottom")
+```
+
+```{r}
+acm_classe <- acm_classe %>% 
+  select(ident_fa, clust) %>% 
+  left_join(indiv, by = "ident_fa")
+acm_classe$durtotfrm <- as.numeric(acm_classe$durtotfrm)
+acm_classe$durar2 <- as.numeric(acm_classe$durar2)
+acm_classe$agenq <- as.numeric(acm_classe$agenq)
+acm_classe <- acm_classe %>% 
+  mutate(age_arrivee = agenq-durar2)
+
+
+ggtable(
+  acm_classe, 
+  columnsX = "clust", 
+  columnsY = c("durtotfrm","durar2", "agenq", "age_arrivee"),
+  mapping = aes(weight = poidsi),
+  cells = "col.prop",
+  fill = "std.resid"
+) + 
+  labs(fill = "Résidus standardisés du Chi²") +
+  theme(legend.position = "bottom")
+```
+```{r}
+acm_classe$originegeo_rec_rec <- acm_classe$originegeo %>%
+  fct_recode(
+    "France métropolitaine ou DOM" = "France métropolitaine",
+    "France métropolitaine ou DOM" = "DOM",
+    "France métropolitaine ou DOM" = "13",
+    "Algérie, Maroc, Tunisie, Turquie ou Moyen-Orient" = "Algérie",
+    "Algérie, Maroc, Tunisie, Turquie ou Moyen-Orient" = "Maroc ou Tunisie",
+    "Autres pays d'Afrique" = "Afrique sahélienne",
+    "Autres pays d'Afrique" = "Afrique guinéenne ou centrale",
+    "Asie du Sud-Est, Chine ou autres pays d'Asie" = "Asie du Sud-Est",
+    "Algérie, Maroc, Tunisie, Turquie ou Moyen-Orient" = "Turquie ou Moyen-Orient",
+    "Asie du Sud-Est, Chine ou autres pays d'Asie" = "Chine",
+    "Asie du Sud-Est, Chine ou autres pays d'Asie" = "Autres pays d'Asie",
+    "Europe" = "Portugal",
+    "Europe" = "Espagne ou talie",
+    "Europe" = "Autres pays de l'UE27",
+    "Europe" = "Autres pays d'Europe",
+    "Europe" = "Autre pays"
+  )
+ggtable(
+  acm_classe, 
+  columnsX = "clust", 
+  columnsY = c("originegeo_rec_rec"),
+  mapping = aes(weight = poidsi),
+  cells = "col.prop",
+  fill = "std.resid",
+  cardinality_threshold = 20
+) + 
+  labs(fill = "Résidus standardisés du Chi²") +
+  theme(legend.position = "bottom")
+```
+

@@ -1,0 +1,294 @@
+---
+title: "Frottis"
+author: "Clémence Bracq"
+date: "2024-03-25"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+```{r}
+enfants <- read_sas("X:/HAB-TEO2-exploitations/MàJ Insee avril 2023/enfants.sas7bdat",  catalog_file = "X:/HAB-TEO2-exploitations/MàJ Insee avril 2023/formats.sas7bcat")
+indiv_test <- indiv %>%  select(ident_fa, datenq, e_nbenf)
+  enfants <- to_factor(enfants) %>% select(ident_fa, e_jnaise, e_mnaise, e_anaise) %>% left_join(indiv_test, by = "ident_fa")
+  
+  # Convertir les dates en objets Date
+enfants$datenq <- as.Date(as.character(enfants$datenq), format = "%Y%m%d")
+enfants$date_naise <- as.Date(paste(enfants$e_anaise, enfants$e_mnaise, enfants$e_jnaise, sep = "-"))
+
+# Calculer la différence entre les deux dates en années
+enfants$delai <- as.numeric(difftime(enfants$datenq, enfants$date_naise, units = "days")) / 365.25
+
+# Créer l'indicateur pour savoir si les deux dates sont distantes de moins de 3 ans
+enfants$nais_3ans <- ifelse(enfants$delai < 3, 1, 0)
+
+enfants <- enfants %>% group_by(ident_fa) %>% mutate(nais_3ans_indiv = max(nais_3ans))
+enfants_3ans <- enfants %>% select(ident_fa, nais_3ans_indiv) %>% distinct()
+indiv_test<- indiv_test %>% 
+  left_join(enfants_3ans, by = "ident_fa") 
+indiv_test<- indiv_test %>% 
+  mutate(nais_3ans =case_when(nais_3ans_indiv==1~"Naissance dans les trois dernières années",
+                               nais_3ans_indiv==0~"Enfants mais pas de naissance\n dans les trois dernières années",
+                                   e_nbenf==0~"Pas d'enfants", 
+                                   TRUE ~ "Refus ou ne sait pas")) %>% 
+  select(nais_3ans, ident_fa)
+indiv <- indiv %>% 
+  left_join(indiv_test, by = "ident_fa")
+
+```
+
+```{r}
+indiv_pd <-svydesign(ids = indiv$ident_fa, data = indiv, weights = indiv$poidsi)
+```
+
+
+```{r}
+cprop(svytable(~frott_ap_25+nais_3ans, indiv_pd))
+```
+```{r}
+indiv$originegeo_rec <- indiv$originegeo %>%
+  fct_recode(
+    "DOM" = "13"
+  )
+indiv_graphe <- indiv %>%
+ filter(!is.na(frott_ap_25)) %>%
+ filter(!(nais_3ans %in% "Refus ou ne sait pas"))
+indiv_graphe$nais_3ans <-  fct_relevel(indiv_graphe$nais_3ans, "Naissance dans les trois dernières années", "Enfants mais pas de naissance\n dans les trois dernières années", "Pas d'enfants")
+
+indiv_graphe_pd <-svydesign(ids = indiv_graphe$ident_fa, data = indiv_graphe, weights = indiv_graphe$poidsi)
+
+
+
+ggsurvey(indiv_graphe_pd) +
+  aes(x = originegeo_rec, fill = frott_ap_25) +
+  geom_bar(position = "fill") +
+  scale_fill_hue(direction = 1) +
+  labs(
+    x = NULL,
+    y = "Proportion",
+    fill = "Dans les 3 dernières années..."
+  ) +
+  coord_flip() +
+  theme(legend.position = "bottom") +
+  theme_minimal()
+
+ggsurvey(indiv_graphe_pd) +
+  aes(x = nais_3ans, fill = frott_ap_25) +
+  geom_bar(position = "fill") +
+  scale_fill_hue(direction = 1) +
+  labs(
+    x = NULL,
+    y = "Proportion",
+    fill = "Dans les 3 dernières années..."
+  ) +
+  coord_flip() +
+  theme(legend.position = "bottom") +
+  theme_minimal()
+
+ ggsurvey(indiv_graphe_pd) +
+  aes(x = nais_3ans, fill = frott_ap_25) +
+  geom_bar(position = "fill") +
+  scale_fill_hue(direction = 1) +
+  labs(
+    x = NULL,
+    y = "Proportion",
+    fill = "Dans les 3 dernières années..."
+  ) +
+  coord_flip() +
+  facet_wrap(vars(group1))+
+  theme(legend.position = "bottom") +
+  theme_minimal()
+```
+### Stats desc pour celles qui ont pas eu d'enfants
+
+```{r}
+table(indiv$nais_3ans)# on en a 9000
+```
+```{r}
+indiv_pasenfant <- indiv_graphe %>% filter(nais_3ans == "Pas d'enfants")
+indiv_pasenfant_pd <-svydesign(ids = indiv_pasenfant$ident_fa, data = indiv_pasenfant, weights = indiv_pasenfant$poidsi)
+```
+
+```{r}
+ggsurvey(indiv_pasenfant_pd) +
+  aes(x = originegeo_rec, fill = frott_ap_25) +
+  geom_bar(position = "fill") +
+  scale_fill_hue(direction = 1) +
+  labs(
+    x = NULL,
+    y = "Proportion",
+    fill = "Dans les 3 dernières années...",
+    subtitle = "Champ : Femmes de plus de 25 ans n'ayant pas eu d'enfants"
+  ) +
+  coord_flip() +
+  theme(legend.position = "bottom") +
+  theme_minimal()
+```
+
+
+### Celles qui en ont eu il y a plus de 3 ans
+
+```{r}
+indiv_2 <- indiv_graphe %>% filter(nais_3ans == "Enfants mais pas de naissance\n dans les trois dernières années")
+indiv2_pd <-svydesign(ids = indiv_2$ident_fa, data = indiv_2, weights = indiv_2$poidsi)
+```
+
+```{r}
+ggsurvey(indiv2_pd) +
+  aes(x = originegeo_rec, fill = frott_ap_25) +
+  geom_bar(position = "fill") +
+  scale_fill_hue(direction = 1) +
+  labs(
+    x = NULL,
+    y = "Proportion",
+    fill = "Dans les 3 dernières années...",
+    subtitle = "Champ : Femmes de plus de 25 ans ayant \neu des enfants tous il y a plus de 3 ans"
+  ) +
+  coord_flip() +
+  theme(legend.position = "bottom") +
+  theme_minimal()
+```
+
+### Celles qui en ont eu dans les 3 ans
+
+```{r}
+indiv_3 <- indiv_graphe %>% filter(nais_3ans == "Naissance dans les trois dernières années")
+table(indiv_3$originegeo_rec)
+indiv_3$originegeo_rec_rec <- indiv_3$originegeo_rec %>%
+  fct_recode(
+    "France métropolitaine ou DOM" = "France métropolitaine",
+    "France métropolitaine ou DOM" = "DOM",
+    "Algérie, Maroc, Tunisie, Turquie ou Moyen-Orient" = "Algérie",
+    "Algérie, Maroc, Tunisie, Turquie ou Moyen-Orient" = "Maroc ou Tunisie",
+    "Autres pays d'Afrique" = "Afrique sahélienne",
+    "Autres pays d'Afrique" = "Afrique guinéenne ou centrale",
+    "Asie du Sud-Est, Chine ou autres pays d'Asie" = "Asie du Sud-Est",
+    "Algérie, Maroc, Tunisie, Turquie ou Moyen-Orient" = "Turquie ou Moyen-Orient",
+    "Asie du Sud-Est, Chine ou autres pays d'Asie" = "Chine",
+    "Asie du Sud-Est, Chine ou autres pays d'Asie" = "Autres pays d'Asie",
+    "Europe" = "Portugal",
+    "Europe" = "Espagne ou talie",
+    "Europe" = "Autres pays de l'UE27",
+    "Europe" = "Autres pays d'Europe",
+    "Europe" = "Autre pays"
+  )
+table(indiv_3$originegeo_rec_rec)
+indiv_3_pd <-svydesign(ids = indiv_3$ident_fa, data = indiv_3, weights = indiv_3$poidsi)
+
+```
+
+```{r}
+ggsurvey(indiv_3_pd) +
+  aes(x = originegeo_rec_rec, fill = frott_ap_25) +
+  geom_bar(position = "fill") +
+  scale_fill_hue(direction = 1) +
+  labs(
+    x = NULL,
+    y = "Proportion",
+    fill = "Dans les 3 dernières années...",
+    subtitle = "Champ : Femmes de plus de 25 ans ayant eu un enfant dans les trois dernières années"
+  ) +
+  coord_flip() +
+  theme(legend.position = "bottom") +
+  theme_minimal()
+```
+
+
+
+### Sur seulement les chinoises
+
+```{r}
+indiv_4 <- indiv_graphe %>% filter(originegeo_rec == "Chine")# 347 femmes
+indiv4_pd <-svydesign(ids = indiv_4$ident_fa, data = indiv_4, weights = indiv_4$poidsi)
+
+```
+
+```{r}
+ggsurvey(indiv4_pd) +
+  aes(x = nais_3ans, fill = frott_ap_25) +
+  geom_bar(position = "fill") +
+  scale_fill_hue(direction = 1) +
+  labs(
+    x = NULL,
+    y = "Proportion",
+    fill = "Dans les 3 dernières années..."
+  ) +
+  coord_flip() +
+  theme(legend.position = "bottom") +
+  theme_minimal()
+```
+
+
+
+## Prédiction
+
+Objectif : produire variable prédite du frottis
+On veut prédire le frottis à partir de toutes les variables socio démo distance APL etc et faire comme si toutes pas enfant pas contra
+
+Calcul si grossesse dans 3 dernières années à partir de e_jnaise, e_mnaise, e_anaise
+
+On veut avoir un gros R² et ensuite prédire pour les données en modifiant les variables qu'on veut
+```{r}
+indiv$frott_ap_25 <- as.factor(indiv$frott_ap_25)
+```
+
+
+```{r}
+
+indiv$nais_3ans_rec <- indiv$nais_3ans %>%
+  fct_recode(
+    "Enfants mais pas de naissance dans les trois dernières années" = "Enfants mais pas de naissance\n dans les trois dernières années",
+    NULL = "Refus ou ne sait pas"
+  )
+indiv$s_etat_rec <- indiv$s_etat %>%
+  fct_recode(
+    "Très bon ou bon" = "Très bon",
+    "Très bon ou bon" = "Bon",
+    "Moyen, mauvais ou très mauvais" = "Moyen",
+    "Moyen, mauvais ou très mauvais" = "Mauvais",
+    "Moyen, mauvais ou très mauvais" = "Très mauvais",
+    NULL = "Refus (ne pas lire)",
+    NULL = "NSP (ne pas lire)")
+
+indiv_reg <- indiv %>% select(frott_ap_25, couplee, agenq, originegeo_rec, nais_3ans_rec, s_etat_rec, csnq_ego, r_defcult, poidsi) %>% filter(!is.na(frott_ap_25)&!is.na(couplee)&!is.na(agenq)&!is.na(originegeo_rec)&!is.na(nais_3ans_rec)&!is.na(s_etat_rec)&!is.na(csnq_ego))
+model <- glm(as.factor(frott_ap_25) ~ as.factor(nais_3ans_rec)+as.factor(couplee)+as.numeric(agenq)+as.factor(originegeo_rec)+as.factor(s_etat_rec)+as.factor(csnq_ego)+r_defcult
+             ,data = indiv_reg
+             , binomial(link = "logit"), weights = poidsi)
+```
+```{r}
+b <- list(geom_vline(xintercept = 0, color = 'black'))
+
+modelplot(model, background = b)
+```
+
+
+```{r}
+#Fausses données pour prédiction
+indiv_epure <- indiv_dist %>% 
+  mutate(maternite == 0 et contra aussi)
+
+# Prédiction sur de nouvelles données
+predictions <- predict(model, newdata = indiv_epure, type = "response")
+
+# Conversion des prédictions en facteurs 
+predictions_factor <- factor(ifelse(predictions > 0.5, "1", "0"))
+
+# Affichage des prédictions
+predictions_factor
+
+# On regarde vite fait ce que ça donne 
+table(predictions_factor)
+
+# on met les nouvelles valeurs dans la table
+indiv_dist <- indiv_dist %>% 
+  mutate(frott_ap_25_epure = predictions_factor) %>% 
+  mutate(frott_ap_25_epure = ifelse(frott_ap_25_epure == "1", 1, 0)) 
+
+```
+
+### Stats desc
+
+
+

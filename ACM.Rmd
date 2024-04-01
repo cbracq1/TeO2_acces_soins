@@ -1,0 +1,341 @@
+---
+title: "ACM"
+author: "Clémence Bracq"
+date: "2023-12-18"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+```{r libraries, include=FALSE}
+source("Libraries.R")
+```
+
+```{r bases, include=FALSE}
+source("Base.R")
+```
+
+Continuer sur ACM1 !!!!
+
+
+# Raisonnement
+
+1.  Définir les variables actives de l'ACM
+
+    -   ACM 1 : renoncement généraliste/autre spécialiste, recours généraliste/autre spécialiste
+    Test renoncement autres actes, causes de renoncement
+    Test Recours généraliste * renoncement généraliste et pareilpr spé (deux ACM différentes ou une même ACM)
+
+    -   ACM 2 : frottis, recours gynéco, renoncement gynéco 
+
+2.  Définir variables supplémentaires pour l'ACM 
+Tester des sous-groupes pour l'étape d'interprétation de l'ACM puis mettre tout et n'importe quoi pour la CAH (notamment toutes les interactions)
+
+
+
+
+Variables avec des NA : à introduire dans un deuxième temps commespécification des variables avec des filtres:
+ - Causes de renoncement s_renonc*s_pqren
+ - Spécialistes pour lesquels renoncé s_renonc*s_queren
+ - duretotfrm group1*duretot
+ - discri liées à secuq
+
+
+
+Mettre aussi les discri en santé : s_traite et s_traite couleur de peau/origines
+
+3.  Classification
+
+4.Idée de l'article de Robette : une fois bien compris le graphique on peut projeter en supplémentaire a\*b pour voir des trajectoires/distances sur l'espace social
+
+
+Idée pour frottis : créer une variable frottis prédit si pas enfant, etc consultation pas pour prévention
+
+
+
+```{r var, include = FALSE}
+# Preparation variables
+
+## Variables actives
+
+### Modalités soin primaire/secondaire
+
+ indiv_dist <- indiv_dist %>% 
+    mutate(s_renonc_acm = case_when(s_queren_a == "Modalité citée" & s_queren_b == "Modalité non citée" ~ "A renoncé à aller voir un généraliste",
+                                    s_queren_a == "Modalité citée" & s_queren_b == "Modalité citée" ~ "A renoncé à aller voir un généraliste et un spécialiste",
+                                    s_queren_a == "Modalité non citée" & s_queren_b == "Modalité citée" ~ "A renoncé à aller voir un spécialiste",
+                                    s_queren_a == "Modalité non citée" & s_queren_b == "Modalité non citée" & s_queren_flag == "A répondu" ~ "A renoncé à d'autres soins ou actes",
+                                    TRUE ~"N'a pas renoncé à des soins"))
+#vérifier que peu de s_queren_flag Refus ou NSP, et pareil pour s_renonc, voire les enlever au préalable
+#Vérifier les modalités, si assez dans chaque (notamment l'un et l'autre) si pas assez faire a renoncé à gen et a renoncé uniquement à spé
+
+ indiv_dist <- indiv_dist %>% 
+    mutate(s_medeciq_acm = case_when(s_medeciq_a == "Modalité citée" & s_medeciq_nbval == 1 ~ "A eu recours seulement à un généraliste",
+                                    (s_medeciq_nbval == 2 & s_medeciq_a == "Modalité citée") | (s_medeciq_nbval == 1 & s_medeciq_a == "Modalité non citée") ~ "A eu recours à un type de spécialiste",
+                                    (s_medeciq_nbval == 3 & s_medeciq_a == "Modalité citée") | (s_medeciq_nbval == 2 & s_medeciq_a == "Modalité non citée") ~ "A eu recours à deux types de spécialistes",
+                                    (s_medeciq_nbval == 4 & s_medeciq_a == "Modalité citée") | (s_medeciq_nbval == 3 & s_medeciq_a == "Modalité non citée") ~ "A eu recours à trois types de spécialistes",
+                                                                        (s_medeciq_nbval == 5 & s_medeciq_a == "Modalité citée") | (s_medeciq_nbval == 4 & s_medeciq_a == "Modalité non citée") ~ "A eu recours à quatres types de spécialistes",
+                                    TRUE ~"N'a pas eu recours à des soins"))
+ # vérif nb_val par rapport à modalité G et D
+ 
+ ### Croisement recours et renoncement
+ indiv_dist <- indiv_dist %>% 
+   mutate(s_rec_ren_gen = case_when(s_medeciq_a=="Modalité citée" & s_queren_a == "Modalité citée"~ "A recouru mais a aussi renoncé à aller voir un généraliste",
+                                    s_medeciq_a=="Modalité citée" & s_queren_a == "Modalité non citée"~ "A recouru et n'a pas renoncé à aller voir un généraliste",
+                                    s_medeciq_a=="Modalité non citée" & s_queren_a == "Modalité non citée"~ "N'a pas recouru et n'a pas renoncé à aller voir un généraliste",
+                                    s_medeciq_a=="Modalité non citée" & s_queren_a == "Modalité citée"~ "N'a pas recouru et a renoncé à aller voir un généraliste"))
+ #Vérif modalités effectifs. est-ce qu'il manque un TRUE?
+ 
+  indiv_dist <- indiv_dist %>% 
+   mutate(s_rec_ren_spe = case_when((s_medeciq_b=="Modalité citée"|s_medeciq_c=="Modalité citée"|s_medeciq_e=="Modalité citée"|s_medeciq_f=="Modalité citée") & s_queren_b == "Modalité citée"~ "A recouru à au moins un spécialiste mais a aussi renoncé à aller voir un spécialiste",
+                                    (s_medeciq_b=="Modalité citée"|s_medeciq_c=="Modalité citée"|s_medeciq_e=="Modalité citée"|s_medeciq_f=="Modalité citée") & s_queren_b == "Modalité non citée"~ "A recouru à au moins un spécialiste et n'a pas renoncé à aller voir un spécialiste",
+                                    (s_medeciq_b!="Modalité citée"&s_medeciq_c!="Modalité citée"&s_medeciq_e!="Modalité citée"&s_medeciq_f!="Modalité citée") & s_queren_b == "Modalité non citée"~ "N'a pas recouru à un spécialiste et n'a pas renoncé à aller voir un spécialiste",
+                                    (s_medeciq_b!="Modalité citée"&s_medeciq_c!="Modalité citée"&s_medeciq_e!="Modalité citée"&s_medeciq_f!="Modalité citée") & s_queren_b == "Modalité citée"~ "N'a pas recouru à un spécialiste et a renoncé à aller voir un spécialiste"
+                                    ))
+ #Vérif modalités effectifs. est-ce qu'il manque un TRUE?
+  
+  # S_ETAT
+  
+indiv_dist$s_etat_rec <- indiv_dist$s_etat %>%
+  fct_recode(
+    NULL = "Refus (ne pas lire)",
+    NULL = "NSP (ne pas lire)",
+    "Très bon, bon ou moyen" = "Très bon",
+    "Très bon, bon ou moyen" = "Bon",
+    "Très bon, bon ou moyen" = "Moyen",
+    "Mauvais ou très mauvais" = "Mauvais",
+    "Mauvais ou très mauvais" = "Très mauvais"
+  )  
+## Variables supplémentaires
+  
+ # - duretotfrm group1*duretot
+ # - discri liées à secuq
+ #  
+  
+# S_PQREN  
+  
+indiv_dist <- indiv_dist %>% 
+  mutate(s_ren_pqren_cout = case_when(s_renonc == "Oui"&s_pqren_a =="Modalité citée"~"A renoncé à des soins à cause du coût",
+         TRUE ~ "N'a pas renoncé à des soins à cause du coût")) %>% 
+  mutate(s_ren_pqren_attente = case_when(s_renonc == "Oui"&s_pqren_b =="Modalité citée"~"A renoncé à des soins parce qu'a attendu que ça passe",
+         TRUE ~ "N'a pas renoncé à des soins parce qu'a attendu que ça passe")) %>% 
+  mutate(s_ren_pqren_qui = case_when(s_renonc == "Oui"&s_pqren_c =="Modalité citée"~"A renoncé à des soins parce que ne savait pas qui aller voir",
+         TRUE ~ "N'a pas renoncé à des soins parce que ne savait pas qui aller voir")) %>%
+  mutate(s_ren_pqren_papier = case_when(s_renonc == "Oui"&(s_pqren_d =="Modalité citée"|s_pqren_e=="Modalité citée")~"A renoncé à des soins à cause de problèmes de langue ou de papiers",
+         TRUE ~ "N'a pas renoncé à des soins à cause de problèmes de langue ou de papiers")) %>%
+    mutate(s_ren_pqren_peur = case_when(s_renonc == "Oui"&s_pqren_f =="Modalité citée"~"A renoncé à des soins par peur",
+         TRUE ~ "N'a pas renoncé à des soins par peur")) %>% 
+      mutate(s_ren_pqren_tps_loin = case_when(s_renonc == "Oui"&(s_pqren_g =="Modalité citée"|s_pqren_h=="Modalité citée")~"A renoncé à des soins parce que trop loin ou pas le temps",
+         TRUE ~ "N'a pas renoncé à des soins parce que trop loin ou pas le temps")) 
+
+# S_QUEREN         
+indiv_dist <- indiv_dist %>% 
+  mutate(s_ren_queren_gen = case_when(s_renonc == "Oui"&s_queren_a =="Modalité citée"~"A renoncé à consulter un généraliste",
+         TRUE ~ "N'a pas renoncé à consulter un généraliste")) %>% 
+  mutate(s_ren_queren_spe = case_when(s_renonc == "Oui"&s_queren_b =="Modalité citée"~"A renoncé à consulter un spécialiste",
+         TRUE ~ "N'a pas renoncé à consulter un spécialiste")) %>% 
+  mutate(s_ren_queren_dent = case_when(s_renonc == "Oui"&s_queren_c =="Modalité citée"~"A renoncé à des soins dentaires importants",
+         TRUE ~ "N'a pas renoncé à des soins dentaires importants")) %>% 
+  mutate(s_ren_queren_medoc = case_when(s_renonc == "Oui"&s_queren_d =="Modalité citée"~"A renoncé à des médicaments",
+         TRUE ~ "N'a pas renoncé à des médicaments")) %>%
+  mutate(s_ren_queren_lun = case_when(s_renonc == "Oui"&s_queren_e=="Modalité citée"~"A renoncé à des lunettes ou lentilles",
+         TRUE ~ "N'a pas renoncé à des lunettes ou lentilles")) %>%
+  mutate(s_ren_queren_analyses = case_when(s_renonc == "Oui"&s_queren_f =="Modalité citée"~"A renoncé à des analyses",
+         TRUE ~ "N'a pas renoncé à des analyses")) %>% 
+  mutate(s_ren_queren_imagerie = case_when(s_renonc == "Oui"&s_queren_g =="Modalité citée"~"A renoncé à des imageries",
+         TRUE ~ "N'a pas renoncé à des imageries"))  
+
+# S_REFUS
+indiv_dist <- indiv_dist %>% 
+  mutate(s_secuq_refus = case_when(s_refus == "Oui"~"Refus de consultation parce que PUMA ou AME (actuel ou passé)",
+                                   is.na(s_refus)~"Pas PUMA ni AME (actuel ou passé)",
+                                   TRUE~"PUMA ou AME (actuel ou passé) sans refus de consultation"))
+  
+
+# DURETOT   
+indiv_dist <- indiv_dist %>% 
+  mutate(durtotfrm_cat = cut(as.numeric(durtotfrm), breaks = c(0, 4, 10, 59)))
+indiv_dist$durtotfrm_cat <- indiv_dist$durtotfrm_cat %>%
+  fct_recode(
+    "Entre 1 et 4 ans" = "(0,4]",
+    "Entre 5 et 10 ans" = "(4,10]",
+    "Entre 10 et 59 ans" = "(10,59]"
+  )
+indiv_dist <- indiv_dist %>% 
+  mutate(dureeorigine = case_when(group1 == "Immigré (né étranger à l'étranger y compris réintégrés)" ~ interaction(origine_tous_g2_rec, durtotfrm_cat),
+                                  TRUE ~ origine_tous_g2_rec))
+
+# a reprendre selon unité et distrib
+                              
+# IMC
+  
+indiv_dist$imc <- indiv_dist$s_poids/((indiv_dist$s_tail)*(indiv_dist$s_tail))
+# Vérif indicateur non réponse : indiv %\>% select(s_poids, s_poids_drap, s_tail, s_tail_drap)
+
+# Discri nationalité ou couleur de peau
+indiv_dist <- indiv_dist %>% 
+  mutate(s_traite_peau = case_when(s_traite == "Oui" & (s_compor_c =="Modalité citée" & s_compor_d == "Modalité citée") ~ "Discrimination par personnel médical à cause couleur de peau/origine/nationalité",
+                                   s_traite == "Non" ~ "Pas de discrimination par personnel médical",
+                                   TRUE ~ "Discrimination par personnel médical pour d'autres motifs"))
+
+```
+
+
+```{r select, include=FALSE}
+# Selection var
+acm <- indiv_dist %>% select(s_medeciq_a, s_medeciq_b, s_medeciq_c, s_medeciq_e, s_medeciq_f, s_etat_rec, s_medeciq_g, s_ren_queren_spe, s_ren_queren_gen, s_ren_queren_dent, s_ren_queren_medoc, s_ren_queren_lun, s_ren_queren_analyses, s_ren_queren_imagerie,  s_rec_ren_gen, s_rec_ren_spe, s_renonc_acm, s_medeciq_acm, s_ren_pqren_cout, s_ren_pqren_attente, s_ren_pqren_qui, s_ren_pqren_papier, s_ren_pqren_peur, s_ren_pqren_tps_loin,l_immi, group1, origine_tous_g2, sexee, csnq_ego, s_secuq, s_secuq_refus, dureeorigine,  s_traite, s_traite_peau,  s_maladi, s_limite, s_medeciq_d, frott_ap_25, agenq, durtotfrm, imc,ident_fa, poidsi) %>% data.frame() %>% 
+  filter(!is.na(s_medeciq_a)&!is.na(s_medeciq_b)&!is.na(s_medeciq_c)&!is.na(s_medeciq_e)&!is.na(s_medeciq_f))
+
+#, matches("^iris_pct_im\\w*$"), matches("^dist_min\\w*$"), matches("^com_apl_\\w*$"),  matches("^lib_dist_min\\w*$")
+rownames(acm) <- paste(acm$ident_fa)
+# acm$s_renonc <- acm$s_renonc %>%
+#   fct_recode(
+#     "A renoncé à des soins" = "Oui",
+#     "N'a pas renoncé à des soins" = "Non",
+#     NULL = "Refus (ne pas lire)",
+#     NULL = "NSP (ne pas lire)"
+#   )
+acm_poids <- acm %>% select(-ident_fa) 
+# %>% na.omit()
+acm <- acm_poids %>% select(-poidsi)
+
+```
+
+```{r}
+acm_frott <- indiv_dist %>% select(frott_ap_25, s_medeciq_d, s_medeciq_a, s_medeciq_b, s_medeciq_c, s_medeciq_e, s_medeciq_f, s_etat_rec,  s_medeciq_g, s_rec_ren_gen, s_rec_ren_spe, s_ren_pqren_cout, s_ren_pqren_attente, s_ren_pqren_qui, s_ren_pqren_papier, s_ren_pqren_peur, s_ren_pqren_tps_loin, s_ren_queren_dent, s_ren_queren_medoc, s_ren_queren_lun, s_ren_queren_analyses, s_ren_queren_imagerie,  l_immi, group1, origine_tous_g2,  csnq_ego, s_secuq, s_secuq_refus, dureeorigine,  s_traite, s_traite_peau,  s_maladi, s_limite, agenq, durtotfrm, imc, ident_fa, poidsi) %>% data.frame() %>% #, matches("^iris_pct_im\\w*$"), matches("^dist_min\\w*$"), matches("^com_apl_\\w*$"),  matches("^lib_dist_min\\w*$")
+  filter(!is.na(frott_ap_25)&!is.na(s_medeciq_d)&!is.na(s_medeciq_a)&!is.na(s_medeciq_b)&!is.na(s_medeciq_c)&!is.na(s_medeciq_e)&!is.na(s_medeciq_f))
+rownames(acm_frott) <- paste(acm_frott$ident_fa)
+# acm_frott$s_renonc <- acm_frott$s_renonc %>%
+#   fct_recode(
+#     "A renoncé à des soins" = "Oui",
+#     "N'a pas renoncé à des soins" = "Non",
+#     NULL = "Refus (ne pas lire)",
+#     NULL = "NSP (ne pas lire)"
+#   )
+acm_frott_poids <- acm_frott %>% select(-ident_fa) 
+# %>% na.omit()
+acm_frott <- acm_frott_poids %>% select(-poidsi)
+```
+
+
+# Tests effectifs
+
+# ACM 1
+
+```{r}
+res <- MCA(acm, quali.sup = 7:38, quanti.sup = 39:41, row.w = acm_poids$poidsi)
+```
+
+```{r}
+explor(res)
+```
+
+
+```{r}
+res <- explor::prepare_results(res)
+explor::MCA_var_plot(res, xax = 1, yax = 2, var_sup = TRUE, var_sup_choice = c("s_medeciq_g",
+    "s_etat_rec", "sexee", "s_traite_peau"), var_lab_min_contrib = 0, col_var = "Variable",
+    symbol_var = "Type", size_var = NULL, size_range = c(10, 300), labels_size = 10,
+    point_size = 43, transitions = TRUE, labels_positions = "auto", labels_prepend_var = FALSE,
+    xlim = c(-2.4, 1.47), ylim = c(-1.11, 2.77))
+```
+
+```{r}
+Factoshiny(res)
+```
+
+### ACM2 
+```{r}
+res <- MCA(acm_frott, quali.sup = c(8:33), quanti.sup = c(34:35), row.w = acm_frott_poids$poidsi)
+```
+
+
+```{r}
+res <- explor::prepare_results(res)
+explor::MCA_var_plot(res, xax = 1, yax = 2, var_sup = TRUE, var_sup_choice = "s_etat_rec",
+    var_lab_min_contrib = 0, col_var = "Variable", symbol_var = "Type", size_var = NULL,
+    size_range = c(10, 300), labels_size = 10, point_size = 56, transitions = TRUE,
+    labels_positions = NULL, labels_prepend_var = FALSE, xlim = c(-1.82, 2.45),
+    ylim = c(-1.91, 2.36))
+```
+
+
+### avec termes d'interaction
+
+```{r}
+acm <- acm %>% 
+  mutate(s_renonc_sexee = interaction(s_renonc, sexee)) %>% 
+  mutate(s_renonc_group1 = interaction(s_renonc, group1)) %>% 
+  mutate(s_renonc_csnq = interaction(s_renonc, csnq_ego)) %>% 
+  mutate(s_renonc_l_immi = interaction(s_renonc, l_immi)) %>% 
+  mutate(s_medeciq_g_sexee = interaction(s_medeciq_g, sexee)) %>% 
+  mutate(s_medeciq_g_group1 = interaction(s_medeciq_g, group1)) %>% 
+  mutate(s_medeciq_g_csnq = interaction(s_medeciq_g, csnq_ego)) %>% 
+  mutate(s_medeciq_g_l_immi = interaction(s_medeciq_g, l_immi)) %>% 
+  mutate(s_renonc_gen_sexee = interaction(s_renonc_gen, sexee)) %>% 
+  mutate(s_renonc_gen_group1 = interaction(s_renonc_gen, group1)) %>% 
+  mutate(s_renonc_gen_csnq = interaction(s_renonc_gen, csnq_ego)) %>% 
+  mutate(s_renonc_gen_l_immi = interaction(s_renonc_gen, l_immi)) %>% 
+  mutate(s_renonc_dent_sexee = interaction(s_renonc_dent, sexee)) %>% 
+  mutate(s_renonc_dent_group1 = interaction(s_renonc_dent, group1)) %>% 
+  mutate(s_renonc_dent_csnq = interaction(s_renonc_dent, csnq_ego)) %>% 
+  mutate(s_renonc_dent_l_immi = interaction(s_renonc_dent, l_immi)) %>% 
+  mutate(s_pqren_cout_sexee = interaction(s_pqren_cout, sexee)) %>% 
+  mutate(s_pqren_cout_group1 = interaction(s_pqren_cout, group1)) %>% 
+  mutate(s_pqren_cout_csnq = interaction(s_pqren_cout, csnq_ego)) %>% 
+  mutate(s_pqren_cout_l_immi = interaction(s_pqren_cout, l_immi)) %>% 
+  mutate(s_pqren_loin_tps_sexee = interaction(s_pqren_loin_tps, sexee)) %>% 
+  mutate(s_pqren_loin_tps_group1 = interaction(s_pqren_loin_tps, group1)) %>%
+  mutate(s_pqren_loin_tps_csnq = interaction(s_pqren_loin_tps, csnq_ego)) %>%   mutate(s_pqren_loin_tps_l_immi = interaction(s_pqren_loin_tps, l_immi)) 
+  
+```
+
+```{r}
+
+res <- MCA(acm, quali.sup = 1:34, row.w = acm_poids$poidsi)
+```
+
+```{r}
+
+library(ca)
+
+# Créer un objet pour l'ACM avec contraintes d'interaction
+acm_model <- constrained(acm[, 1:6], row.w = acm_poids$poidsi, nd = 2, col.constraints = list(interaction = TRUE))
+
+# Afficher le résultat
+print(acm_model)
+
+```
+
+```{r}
+res.ca = CA(acm[,1:6], row.w = acm_poids$poidsi, col.interaction = TRUE, graph = TRUE, missing = "row-wise")
+```
+
+### Base 2
+
+```{r}
+# Base
+acm2 <- indiv_dist %>% select(csnq_ego, origine_tous_g2, sexee, s_secuq, l_immi,  s_renonc, s_renonc_gen, s_renonc_spe, s_renonc_dent, s_renonc_med, s_renonc_lun, s_renonc_lab, s_renonc_irm, s_pqren_cout, s_pqren_attente, s_pqren_perdu, s_pqren_langue, s_pqren_papiers, s_pqren_peur, s_pqren_temps, s_pqren_loin, s_medeciq_g, s_medeciq_a, s_medeciq_b, s_medeciq_c, s_medeciq_d, s_medeciq_e, s_medeciq_f, group1, s_etat, s_maladi, s_limite, ident_fa, agenq) %>% data.frame()#, matches("^iris_pct_im\\w*$"), matches("^dist_min\\w*$"), matches("^com_apl_\\w*$"),  matches("^lib_dist_min\\w*$")
+rownames(acm2) <- paste(acm2$ident_fa)
+acm2 <- acm2 %>% select(-ident_fa) %>% na.omit()
+```
+
+```{r}
+res2 <- MCA(acm2, quali.sup = 6:32, quanti.sup = 33)
+```
+
+```{r}
+explor(res2)
+```
+
+
+```{r acp, include =FALSE}
+# ACP
+# 
+# acp <- indiv_dist %>% select(agenq, matches("^iris_pct_im\\w*$"), matches("^dist_min\\w*$"), matches("^com_apl_\\w*$"),  matches("^lib_dist_min\\w*$")) %>% data.frame() %>% select(-iris_pct_immi_cat, -iris_pct_imagh_afs_cat, -com_apl_mg_rec)
+# 
+# matrice_corr <- cor(acp, use = "pairwise.complete.obs")
+# corrplot(matrice_corr)
+```
