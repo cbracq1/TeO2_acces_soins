@@ -20,7 +20,8 @@ source("Libraries.R")
 
 ```{r base, include = FALSE}
 teo_dist_ident <- read_parquet("distances_etab.parquet")
-if (!exists("teo_dist_ident_lib")) {teo_dist_ident_lib <- read_parquet("distances_lib.parquet")}
+teo_dist_ident_lib <- read_parquet("distances_lib.parquet")
+
 
 indiv_mod <- indiv %>% 
   left_join(BDD_ctx, by = "ident_fa") %>% 

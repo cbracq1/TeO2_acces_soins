@@ -26,7 +26,7 @@ source("Libraries.R")
 source("Base_utf.R")
 ```
 
-## Statistiques descriptives
+## Mesures
 ### Ségrégation
 
 En moyenne, les enquêtés habitent dans des IRIS composés de...
@@ -228,100 +228,60 @@ ggsurvey(indiv_dist_pd,  aes(x = com_pop_ind_pond, y = dist_min_urg)) +
   xlab("Population de la commune")+ylab("Distance aux urgences\n les plus proches")
 ```
 
-
+Nombre de personnes habitant dans des villes de moins de 25000 hab ds TeO
 ```{r}
-indiv_dist_ville <- indiv_dist %>% filter(indiv_dist$com_pop_ind_pond >= 30000)
-## Recodage de indiv_dist_ville$group1
-indiv_dist_ville$group1 <- indiv_dist_ville$group1 %>%
-  fct_recode(
-    "Population non immigrée ni originaire d'Outre-mer et\ndescendant de deux parents non immigrés et non originaires d'Outre-mer" = "Population non immigrée ni originaire d'Outre-mer et descendant de deux parents non immigrés et non originaires d'Outre-mer"
-  )
-indiv_dist_pd_ville <- svydesign(ids = indiv_dist_ville$ident_fa, data = indiv_dist_ville, weights = indiv_dist_ville$poidsi)
+indiv_dist <- indiv_dist %>% 
+  mutate(tailleville = ifelse(com_pop_ind_pond>= 25000, "Plus de 25 000 habitants", "Moins de 25000 habitants"))
+table(indiv_dist$tailleville)
+cprop(table(indiv_dist$tailleville, indiv_dist$group1))
 
 ```
-
 ```{r}
-df3 <- as.data.frame(svyby(~ lib_dist_min_medge, ~group1, indiv_dist_pd_ville, svymean, na.rm =TRUE))
-
-ggplot(df3) +
-  aes(x = group1, y = lib_dist_min_medge, fill = group1) +
-  geom_col() +
-  scale_fill_hue(direction = 1) +
-  labs(x = element_blank(),
-       y = "Distance moyenne au médecin \ngénéraliste le plus proche",
-       fill = "Rapport à la migration"
-  ) +
-  theme(axis.text.x = element_blank(),
-        legend.position="bottom",
-        legend.direction = "vertical")+ylim(0, 500)
-rm(df3)
+prop.table(table(indiv_dist$tailleville))
 ```
 
-```{r}
-df4 <- as.data.frame(svyby(~ lib_dist_min_medge, ~l_immi, indiv_dist_pd_ville, svymean, na.rm =TRUE))
 
-ggplot(df4) +
-  aes(x = l_immi, y = lib_dist_min_medge, fill = l_immi) +
-  geom_col() +
-  scale_fill_manual(
-    values = c(`Presque tous sont d'origine immigrée` = "#D7C78F",
-               `Plus de la moitié est d'origine immigrée` = "#FAC96E",
-               `La moitié est d'origine immigrée` = "#F99536",
-               `Moins de la moitié est d'origine immigrée` = "#CE5720",
-               `Presque pas ou aucun n'est d'origine immigrée` = "#B8250C",
-               `Refus (ne pas lire)` = "#BBB9B9",
-               `NSP (ne pas lire)` = "#383737")
-  ) +
-  labs(x = element_blank(),
-    y = "Distance moyenne au médecin \ngénéraliste le plus proche",
-    fill = "Dans votre quartier, les habitants sont..."
-  ) +
-  theme(axis.text.x = element_blank(),
-        legend.position="bottom",
-        legend.direction = "vertical")+ylim(0,500)
-rm(df4)
+Dispersion
+```{r}
+sd(indiv_dist$dist_min_urg, na.rm=TRUE)
+sd(indiv_dist$dist_min_mat, na.rm=TRUE)
+sd(indiv_dist$lib_dist_min_medge, na.rm=TRUE)
+sd(indiv_dist$lib_dist_min_gynéco, na.rm=TRUE)
+
+mean(indiv_dist$dist_min_urg, na.rm=TRUE)
+mean(indiv_dist$dist_min_mat, na.rm=TRUE)
+mean(indiv_dist$lib_dist_min_medge, na.rm=TRUE)
+mean(indiv_dist$lib_dist_min_gynéco, na.rm=TRUE)
+
 ```
-
+Dispersion qd plus de 25 000 habitants
 ```{r}
-dfb <- as.data.frame(svyby(~ dist_min_urg, ~group1, indiv_dist_pd_ville, svymean, na.rm =TRUE))
+indiv_dist_ville <- indiv_dist %>% filter(tailleville=="Plus de 25 000 habitants")
+sd(indiv_dist_ville$dist_min_urg, na.rm=TRUE)
+sd(indiv_dist_ville$dist_min_mat, na.rm=TRUE)
+sd(indiv_dist_ville$lib_dist_min_medge, na.rm=TRUE)
+sd(indiv_dist_ville$lib_dist_min_gynéco, na.rm=TRUE)
 
-ggplot(dfb) +
-  aes(x = group1, y = dist_min_urg, fill = group1) +
-  geom_col() +
-  scale_fill_hue(direction = 1) +
-  labs(x = element_blank(),
-       y = "Distance aux urgences les plus proches",
-       fill = "Rapport à la migration"
-  ) +
-  theme(axis.text.x = element_blank(),
-        legend.position="bottom",
-        legend.direction = "vertical")+ylim(0, 3000)
-rm(dfb)
+mean(indiv_dist_ville$dist_min_urg, na.rm=TRUE)
+mean(indiv_dist_ville$dist_min_mat, na.rm=TRUE)
+mean(indiv_dist_ville$lib_dist_min_medge, na.rm=TRUE)
+mean(indiv_dist_ville$lib_dist_min_gynéco, na.rm=TRUE)
+
 ```
+On divise par trois pr urgences, par 4 pour les maternités, 3 pr medgé, 2 pour gynéco
 
 ```{r}
-df2b <- as.data.frame(svyby(~ dist_min_urg, ~l_immi, indiv_dist_pd_ville, svymean, na.rm =TRUE))
+indiv_dist_moins <- indiv_dist %>% filter(tailleville!="Plus de 25 000 habitants")
+sd(indiv_dist_moins$dist_min_urg, na.rm=TRUE)
+sd(indiv_dist_moins$dist_min_mat, na.rm=TRUE)
+sd(indiv_dist_moins$lib_dist_min_medge, na.rm=TRUE)
+sd(indiv_dist_moins$lib_dist_min_gynéco, na.rm=TRUE)
 
-ggplot(df2b) +
-  aes(x = l_immi, y = dist_min_urg, fill = l_immi) +
-  geom_col() +
-  scale_fill_manual(
-    values = c(`Presque tous sont d'origine immigrée` = "#D7C78F",
-               `Plus de la moitié est d'origine immigrée` = "#FAC96E",
-               `La moitié est d'origine immigrée` = "#F99536",
-               `Moins de la moitié est d'origine immigrée` = "#CE5720",
-               `Presque pas ou aucun n'est d'origine immigrée` = "#B8250C",
-               `Refus (ne pas lire)` = "#BBB9B9",
-               `NSP (ne pas lire)` = "#383737")
-  ) +
-  labs(x = element_blank(),
-       y = "Distance moyenne aux urgences les plus proches",
-       fill = "Dans votre quartier, les habitants sont..."
-  ) +
-  theme(axis.text.x = element_blank(),
-        legend.position="bottom",
-        legend.direction = "vertical")+ylim(0,3000)
-rm(df2b)
+mean(indiv_dist_moins$dist_min_urg, na.rm=TRUE)
+mean(indiv_dist_moins$dist_min_mat, na.rm=TRUE)
+mean(indiv_dist_moins$lib_dist_min_medge, na.rm=TRUE)
+mean(indiv_dist_moins$lib_dist_min_gynéco, na.rm=TRUE)
+
 ```
 
 ### Recours aux soins
@@ -429,6 +389,8 @@ tb
 # xtable(tb, digits = 1)
 ```
 
+ACM : voir doc ACM_traj
+
 Renoncement
 ```{r}
 #RENONCEMENT
@@ -463,3 +425,411 @@ tb <- cprop(svytable(~ s_pqren_loin_tps + l_immi_rec, indiv_renonc_pd))
 tb
 # xtable(tb, digits = 1)
 ```
+
+
+
+## Inegalités de recours
+
+```{r, echo = FALSE}
+indiv$s_medeciq_g_rec <- indiv$s_medeciq_g %>% 
+  fct_recode(
+    "Refus ou ne sait pas" = "-1",
+    "Refus ou ne sait pas" = "-2"
+  )  
+
+
+indiv$s_etat2 <- indiv$s_etat %>%
+  fct_recode(
+    "Refus ou ne sait pas" = "Refus (ne pas lire)",
+    "Refus ou ne sait pas" = "NSP (ne pas lire)"
+  )
+indiv$s_medeciq_a_rec <- indiv$s_medeciq_a %>%
+  fct_explicit_na("Refus ou ne sait pas")
+indiv$s_medeciq_b_rec <- indiv$s_medeciq_b %>%
+  fct_explicit_na("Refus ou ne sait pas")
+indiv$s_medeciq_c_rec <- indiv$s_medeciq_c %>%
+  fct_explicit_na("Refus ou ne sait pas")
+indiv$s_medeciq_e_rec <- indiv$s_medeciq_e %>%
+  fct_explicit_na("Refus ou ne sait pas")
+indiv$s_medeciq_f_rec <- indiv$s_medeciq_f %>%
+  fct_explicit_na("Refus ou ne sait pas")
+
+
+indiv <- indiv %>% 
+  mutate(originegeo2 = case_when(group1=="Immigré (né étranger à l'étranger y compris réintégrés)"& originegeo_rec!="Espagne ou talie" ~originegeo_rec,
+                                 group1=="Population non immigrée ni originaire d'Outre-mer et descendant de deux parents non immigrés et non originaires d'Outre-mer"~"France métropolitaine, non G2 Outre-mer ou immigré",
+                                 originegeo_rec=="Espagne ou talie"~"Espagne ou Italie",
+                                 group1!="Population non immigrée ni originaire d'Outre-mer et descendant de deux parents non immigrés et non originaires d'Outre-mer"& group1!="Immigré (né étranger à l'étranger y compris réintégrés)"~group1,
+                                 TRUE~group1))
+
+indiv$originegeo2 <- factor(indiv$originegeo2, levels = c("France métropolitaine, non G2 Outre-mer ou immigré", "Originaire de l'Outre-mer", "Descendant G2 d'un ou deux immigré-s", "Descendant G2 d'un ou deux originaire-s de l'Outre-mer", "Espagne ou Italie", "Portugal", "Autres pays de l'UE27", "Autres pays d'Europe", "Maroc ou Tunisie", "Algérie",  "Afrique guinéenne ou centrale", "Afrique sahélienne", "Autres pays d'Afrique", "Turquie ou Moyen-Orient", "Chine", "Asie du Sud-Est", "Autres pays d'Asie", "Autre pays"))
+
+indiv_pd <-svydesign(ids = indiv$ident_fa, data = indiv, weights = indiv$poidsi)
+
+indiv_femme <- indiv %>% filter(sexee=="Féminin")
+indiv_femme$s_medeciq_d_rec <- indiv_femme$s_medeciq_d %>%
+  fct_explicit_na("Refus ou ne sait pas")
+indiv_f_pd <-svydesign(ids = indiv_femme$ident_fa, data = indiv_femme, weights = indiv_femme$poidsi)
+
+indiv_frott <- indiv_femme %>% filter(agenq>= 25) 
+indiv_frott$frott_ap_25 <- indiv_frott$frott_ap_25 %>%
+  fct_explicit_na("Refus ou ne sait pas")
+indiv_frott_pd <-svydesign(ids = indiv_frott$ident_fa, data = indiv_frott, weights = indiv_frott$poidsi)
+```
+
+```{r, echo = FALSE}
+ggsurvey(indiv_frott_pd) +
+  aes(x = originegeo2, fill = frott_ap_25) +
+  geom_bar(position = "fill") +
+  scale_fill_hue(direction = 1) +
+  labs(
+    x = NULL,
+    y = "Proportion",
+    fill = "Dans les 3 dernières années..."
+  ) +
+  coord_flip() + scale_fill_manual(values=c("#40B330", "#FF4040", "#999999"))+
+    theme(legend.position = "bottom")
+```
+
+
+```{r, echo = FALSE}
+ggsurvey(indiv_f_pd) +
+  aes(x = originegeo2, fill = s_medeciq_d_rec) +
+  geom_bar(position = "fill") +
+  # scale_fill_hue(direction = 1) +
+  labs(
+    x = NULL,
+    y = "Proportion",
+    fill = "Recours au gynécologue"
+  ) +
+  coord_flip() + scale_fill_manual(values=c( "#FF4040","#40B330", "#999999"))+
+  theme(legend.position = "bottom") 
+```
+
+```{r, echo = FALSE}
+
+ggsurvey(indiv_frott_pd) +
+  aes(x = originegeo2, fill = s_medeciq_d_rec) +
+  geom_bar(position = "fill") +
+  scale_fill_hue(direction = 1) +
+  labs(
+    x = NULL,
+    y = "Proportion",
+    fill = "Recours au gynécologue"
+  ) +
+  coord_flip() +scale_fill_manual(values=c( "#FF4040","#40B330", "#999999"))+
+  theme(legend.position = "bottom") 
+```
+
+
+```{r, echo = FALSE}
+ggsurvey(indiv_pd) +
+  aes(x = originegeo2, fill = s_medeciq_g_rec) +
+  geom_bar(position = "fill") +
+  # scale_fill_hue(direction = 1) +
+  labs(
+    x = NULL,
+    y = "Proportion",
+    fill = "Pas de recours \n à une modalité citée :"
+  ) + scale_fill_manual(values=c("#999999", "#FF4040", "#40B330"))+
+  coord_flip() +
+  theme(legend.position = "bottom")
+```
+
+```{r, echo = FALSE}
+ggsurvey(indiv_pd) +
+  aes(x = originegeo2, fill = s_medeciq_a_rec) +
+  geom_bar(position = "fill") +
+  # scale_fill_hue(direction = 1) +
+  labs(
+    x = NULL,
+    y = "Proportion",
+    fill = "Recours au généraliste"
+  ) + scale_fill_manual(values=c( "#FF4040", "#40B330", "#999999"))+
+  coord_flip() +
+  theme(legend.position = "bottom") 
+  # theme_minimal()
+```
+
+
+```{r, echo = FALSE}
+ggsurvey(indiv_pd) +
+  aes(x = originegeo2, fill = s_medeciq_b_rec) +
+  geom_bar(position = "fill") +
+  scale_fill_hue(direction = 1) +
+  labs(
+    x = NULL,
+    y = "Proportion",
+    fill = "Recours au dentiste"
+  ) +
+  coord_flip() + scale_fill_manual(values=c( "#FF4040", "#40B330", "#999999"))+
+  theme(legend.position = "bottom") 
+```
+
+
+```{r, echo = FALSE}
+ggsurvey(indiv_pd) +
+  aes(x = originegeo2, fill = s_medeciq_c_rec) +
+  geom_bar(position = "fill") +
+  scale_fill_hue(direction = 1) +
+  labs(
+    x = NULL,
+    y = "Proportion",
+    fill = "Recours à l'ophtalmologue"
+  ) +
+  coord_flip() + scale_fill_manual(values=c( "#FF4040", "#40B330", "#999999"))+
+  theme(legend.position = "bottom") 
+```
+
+
+```{r, echo = FALSE}
+
+ggsurvey(indiv_pd) +
+  aes(x = originegeo2, fill = s_medeciq_e_rec) +
+  geom_bar(position = "fill") +
+  scale_fill_hue(direction = 1) +
+  labs(
+    x = NULL,
+    y = "Proportion",
+    fill = "Recours au psychologue ou psychiatre"
+  ) + scale_fill_manual(values=c( "#FF4040", "#40B330", "#999999"))+
+  coord_flip() +
+  theme(legend.position = "bottom")
+```
+
+
+```{r, echo = FALSE}
+
+ggsurvey(indiv_pd) +
+  aes(x = originegeo2, fill = s_medeciq_f_rec) +
+  geom_bar(position = "fill") +
+  scale_fill_hue(direction = 1) +
+  labs(
+    x = NULL,
+    y = "Proportion",
+    fill = "Recours à un autre spécialiste"
+  ) +
+  coord_flip() + scale_fill_manual(values=c( "#FF4040", "#40B330", "#999999"))+
+  theme(legend.position = "bottom") 
+```
+
+```{r, echo  = FALSE}
+ggsurvey(indiv_pd) +
+  aes(x = originegeo2, fill = s_renonc_rec) +
+  geom_bar(position = "fill") +
+  scale_fill_hue(direction = 1) +
+  labs(
+    x = NULL,
+    y = "Proportion",
+    fill = "Renoncement"
+  ) +
+  coord_flip() + scale_fill_manual(values=c( "#FF4040", "#40B330", "#999999"))+
+  theme(legend.position = "bottom") 
+```
+
+```{r, echo = FALSE}
+ggsurvey(indiv_pd) +
+  aes(x = originegeo2, fill = s_etat2) +
+  geom_bar(position = "fill") +
+  # scale_fill_hue(direction = 1) +
+  labs(
+    x = NULL,
+    y = "Proportion",
+    fill = "Etat de santé perçu"
+  ) +
+  coord_flip() +scale_fill_manual(values=c( "#09622A","#519D54",  "#EAC34B", "#D94602", "#9C0824", "#999999"))+
+  theme(legend.position = "bottom") 
+  # theme_minimal()
+```
+
+Pour regression voir reg_rec
+
+## Distance et segreg
+### Segreg
+
+Justifier pas coethniques
+Pb pour autres
+Et pb d'effectifs
+Et pb volatilité
+
+```{r}
+indiv_bdd <- indiv_bdd %>% 
+  mutate(iris_pct_imasechine = iris_pct_imchi +iris_pct_imasie)
+indiv_bdd_pd <-svydesign(ids = indiv_bdd$ident_fa, data = indiv_bdd, weights = indiv_bdd$poidsi)
+```
+
+```{r}
+svyquantile(~iris_pct_immi.x, indiv_bdd_pd, c(0.25, 0.5, 0.75, 0.9))
+max(indiv_bdd$iris_pct_immi.x)
+svyquantile(~iris_pct_imchi, indiv_bdd_pd, c(0.25, 0.5, 0.75, 0.9))
+max(indiv_bdd$iris_pct_imchi)
+
+svyquantile(~iris_pct_imasie, indiv_bdd_pd, c(0.25, 0.5, 0.75, 0.9))
+max(indiv_bdd$iris_pct_imasie)
+
+svyquantile(~iris_pct_imasechine, indiv_bdd_pd, c(0.25, 0.5, 0.75, 0.9))
+max(indiv_bdd$iris_pct_imasechine)
+
+
+```
+
+```{r}
+indiv_test <- indiv_bdd %>% filter(originegeo=="Chine"&iris_pct_imchi>= 5)# 101
+indiv_test <- indiv_bdd %>% filter(iris_pct_imchi>= 5)# 230
+
+indiv_test <- indiv_bdd %>% filter(originegeo%in%c("Chine", "Asie du Sud-Est")&iris_pct_imasechine>= 5)# 213
+indiv_test <- indiv_bdd %>% filter(iris_pct_imasechine>= 5)# 559
+rm(indiv_test)
+
+```
+
+
+### Distances
+
+
+```{r}
+indiv_dist$iris_pct_immi_cat <- cut(indiv_dist$iris_pct_immi.y, breaks = c(-1,0, 3, 6, 10, 20, max(indiv_dist$iris_pct_immi.y)))
+indiv_dist$iris_pct_immi_cat <- indiv_dist$iris_pct_immi_cat %>%
+  fct_recode(
+    "Entre 0 et 3% d'immigrés" = "(-1,0]",
+    "Entre 0 et 3% d'immigrés" = "(0,3]",
+    "Entre 3 et 10% d'immigrés" = "(3,6]",
+    "Entre 6 et 10% d'immigrés" = "(6,10]",
+    "Entre 10 et 20% d'immigrés" = "(10,20]",
+    "20% d'immigrés et plus" = "(20,64.9]",
+  )
+indiv_dist_ville <- indiv_dist %>% filter(indiv_dist$com_pop_ind_pond >= 30000)
+## Recodage de indiv_dist_ville$group1
+indiv_dist_ville$group1 <- indiv_dist_ville$group1 %>%
+  fct_recode(
+    "Population non immigrée ni originaire d'Outre-mer et\ndescendant de deux parents non immigrés et non originaires d'Outre-mer" = "Population non immigrée ni originaire d'Outre-mer et descendant de deux parents non immigrés et non originaires d'Outre-mer"
+  )
+indiv_dist_pd_ville <- svydesign(ids = indiv_dist_ville$ident_fa, data = indiv_dist_ville, weights = indiv_dist_ville$poidsi)
+
+```
+
+```{r}
+df3 <- as.data.frame(svyby(~ lib_dist_min_medge, ~group1, indiv_dist_pd_ville, svymean, na.rm =TRUE))
+
+ggplot(df3) +
+  aes(x = group1, y = lib_dist_min_medge, fill = group1) +
+  geom_col() +
+  scale_fill_hue(direction = 1) +
+  labs(x = element_blank(),
+       y = "Distance moyenne au médecin \ngénéraliste le plus proche",
+       fill = "Rapport à la migration"
+  ) #+geom_errorbar(aes(ymin=lib_dist_min_medge - se, ymax = lib_dist_min_medge +se), width = 0.2)+ il faudrait le faire avec l'écart-type
+  theme(axis.text.x = element_blank(),
+        legend.position="bottom",
+        legend.direction = "vertical")+ylim(0, 500)
+rm(df3)
+```
+
+
+
+
+```{r}
+df4 <- as.data.frame(svyby(~ lib_dist_min_medge, ~l_immi, indiv_dist_pd_ville, svymean, na.rm =TRUE))
+
+ggplot(df4) +
+  aes(x = l_immi, y = lib_dist_min_medge, fill = l_immi) +
+  geom_col() +
+  scale_fill_manual(
+    values = c(`Presque tous sont d'origine immigrée` = "#D7C78F",
+               `Plus de la moitié est d'origine immigrée` = "#FAC96E",
+               `La moitié est d'origine immigrée` = "#F99536",
+               `Moins de la moitié est d'origine immigrée` = "#CE5720",
+               `Presque pas ou aucun n'est d'origine immigrée` = "#B8250C",
+               `Refus (ne pas lire)` = "#BBB9B9",
+               `NSP (ne pas lire)` = "#383737")
+  ) +
+  labs(x = element_blank(),
+    y = "Distance moyenne au médecin \ngénéraliste le plus proche",
+    fill = "Dans votre quartier, les habitants sont..."
+  ) +
+  theme(axis.text.x = element_blank(),
+        legend.position="bottom",
+        legend.direction = "vertical")+ylim(0,500)
+rm(df4)
+```
+
+
+```{r}
+df4 <- as.data.frame(svyby(~ lib_dist_min_medge, ~iris_pct_immi_cat, indiv_dist_pd_ville, svymean, na.rm =TRUE))
+
+ggplot(df4) +
+  aes(x = iris_pct_immi_cat, y = lib_dist_min_medge, fill = iris_pct_immi_cat) +
+  geom_col() +
+  labs(x = element_blank(),
+    y = "Distance moyenne au médecin \ngénéraliste le plus proche",
+    fill = "Pourcentage d'immigrés dans l'IRIS"
+  ) +scale_fill_brewer(palette = "Spectral") +
+  theme(axis.text.x = element_blank(),
+        legend.position="bottom",
+        legend.direction = "vertical")#+ylim(0,500)
+rm(df4)
+```
+```{r}
+df4 <- as.data.frame(svyby(~ dist_min_urg, ~iris_pct_immi_cat, indiv_dist_pd_ville, svymean, na.rm =TRUE))
+
+ggplot(df4) +
+  aes(x = iris_pct_immi_cat, y = dist_min_urg, fill = iris_pct_immi_cat) +
+  geom_col() +
+  labs(x = element_blank(),
+    y = "Distance aux urgences les plus proches",
+    fill = "Pourcentage d'immigrés dans l'IRIS"
+  ) +scale_fill_brewer(palette = "Spectral") +
+  theme(axis.text.x = element_blank(),
+        legend.position="bottom",
+        legend.direction = "vertical")#+ylim(0,500)
+rm(df4)
+```
+
+```{r}
+dfb <- as.data.frame(svyby(~ dist_min_urg, ~group1, indiv_dist_pd_ville, svymean, na.rm =TRUE))
+
+ggplot(dfb) +
+  aes(x = group1, y = dist_min_urg, fill = group1) +
+  geom_col() +
+  scale_fill_hue(direction = 1) +
+  labs(x = element_blank(),
+       y = "Distance aux urgences les plus proches",
+       fill = "Rapport à la migration"
+  ) +
+  theme(axis.text.x = element_blank(),
+        legend.position="bottom",
+        legend.direction = "vertical")+ylim(0, 3000)
+rm(dfb)
+```
+
+```{r}
+df2b <- as.data.frame(svyby(~ dist_min_urg, ~l_immi, indiv_dist_pd_ville, svymean, na.rm =TRUE))
+
+ggplot(df2b) +
+  aes(x = l_immi, y = dist_min_urg, fill = l_immi) +
+  geom_col() +
+  scale_fill_manual(
+    values = c(`Presque tous sont d'origine immigrée` = "#D7C78F",
+               `Plus de la moitié est d'origine immigrée` = "#FAC96E",
+               `La moitié est d'origine immigrée` = "#F99536",
+               `Moins de la moitié est d'origine immigrée` = "#CE5720",
+               `Presque pas ou aucun n'est d'origine immigrée` = "#B8250C",
+               `Refus (ne pas lire)` = "#BBB9B9",
+               `NSP (ne pas lire)` = "#383737")
+  ) +
+  labs(x = element_blank(),
+       y = "Distance moyenne aux urgences les plus proches",
+       fill = "Dans votre quartier, les habitants sont..."
+  ) +
+  theme(axis.text.x = element_blank(),
+        legend.position="bottom",
+        legend.direction = "vertical")+ylim(0,3000)
+rm(df2b)
+```
+
+
+
+
+## Hétérogénéité
+
+

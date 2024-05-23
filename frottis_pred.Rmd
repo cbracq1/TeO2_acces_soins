@@ -1,0 +1,42 @@
+---
+title: "Prediction frottis"
+author: "Clémence Bracq"
+date: "2024-04-11"
+output: html_document
+---
+
+Objectif : produire variable prédite du frottis
+On veut prédire le frottis à partir de toutes les variables socio démo distance APL etc et faire comme si toutes pas enfant pas contra
+
+On veut avoir un gros R² et ensuite prédire pour les données en modifiant les variables qu'on veut
+
+### Prediction
+
+```{r}
+#Fausses données pour prédiction
+indiv_epure <- indiv_dist %>% 
+  mutate(maternite == 0 et contra aussi)
+
+# Prédiction sur de nouvelles données
+predictions <- predict(model, newdata = indiv_epure, type = "response")
+
+# Conversion des prédictions en facteurs 
+predictions_factor <- factor(ifelse(predictions > 0.5, "1", "0"))
+
+# Affichage des prédictions
+predictions_factor
+
+# On regarde vite fait ce que ça donne 
+table(predictions_factor)
+
+# on met les nouvelles valeurs dans la table
+indiv_dist <- indiv_dist %>% 
+  mutate(frott_ap_25_epure = predictions_factor) %>% 
+  mutate(frott_ap_25_epure = ifelse(frott_ap_25_epure == "1", 1, 0)) 
+
+```
+
+### Stats desc
+
+
+

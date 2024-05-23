@@ -1,0 +1,1319 @@
+---
+title: "Chine"
+author: "Clémence Bracq"
+date: "2024-04-15"
+output:
+  html_notebook: default
+  html_document:
+    df_print: paged
+  pdf_document: default
+editor_options:
+  markdown:
+    wrap: 72
+---
+
+# Pourquoi les immigrés originaires de Chine ressort-ils comme spécifiques?
+
+## Spécificités des immigrés originaires de Chine au regard de l'accès aux soins
+```{r, include =FALSE}
+indiv$originegeo_rec <- indiv$originegeo %>%
+  fct_recode(
+    "DOM" = "13"
+  )
+indiv <- indiv %>% 
+  mutate(prodesante = ifelse(p_naf88 %in% c(88, 87, 86), 1, 0))
+indiv$s_etat_rec <- indiv$s_etat %>%
+  fct_recode(
+    "Refus ou ne sait pas" = "NSP (ne pas lire)",
+     "Refus ou ne sait pas" ="Refus (ne pas lire)"
+
+  )
+## Recodage de indiv$a_rorig en indiv$a_rorig_rec
+indiv$a_rorig_rec <- indiv$a_rorig %>%
+  fct_recode(
+    "Refus ou ne sait pas" = "Refus (ne pas lire)",
+    "Refus ou ne sait pas" = "NSP (ne pas lire)"
+  ) %>%
+  fct_explicit_na("Pas d'amis hors famille")
+indiv_pd <-svydesign(ids = indiv$ident_fa, data = indiv, weights = indiv$poidsi)
+```
+
+
+Origine qui recourt le moins au frottis : 
+32 % de femmes de plus de 25 ans immigrées d'origine chinoise n'ont pas eu de frottis dans les 3 dernières années, contre 24% en moyenne sur les immigrées toutes origines confondues et  16.5% dans la ppopulation non immigrée ni originaire d'Outre-mer et descendant de deux parents non immigrés et non originaires d'Outre-mer.
+
+NB : Immigrées originaires de chine de plus de 25 ans : 347 enquêtées
+
+```{r, include =FALSE}
+cprop(svytable(~frott_ap_25+originegeo_rec, indiv_graphe_pd))
+cprop(svytable(~frott_ap_25+group1, indiv_graphe_pd))
+
+```
+
+```{r, echo = FALSE}
+ggsurvey(indiv_graphe_pd) +
+  aes(x = originegeo_rec, fill = frott_ap_25) +
+  geom_bar(position = "fill") +
+  scale_fill_hue(direction = 1) +
+  labs(
+    x = NULL,
+    y = "Proportion",
+    fill = "Dans les 3 dernières années..."
+  ) +
+  coord_flip() +
+  theme(legend.position = "bottom")
+```
+
+Même constat pour le gynécologue (cette fois sur toutes les femmes quelque soit leur âge) : origine qui recours le moins
+61% des femmes immigrées originaires de Chine n'ont pas consulté le gynécologue dans l'année, contre 49% en moyenne parmi les immigrées toutes origines confondues et 47% parmi la population non immigrée ni originaire d'Outre-mer et descendant de deux parents non immigrés et non originaires d'Outre-mer.
+C'est également vrai si on restreint la population aux plus de 25 ans pour pouvoir comparer avec les résultats sur le frottis.
+
+```{r, include = FALSE}
+indiv_femme <- indiv %>% filter(sexee=="Féminin")
+indiv_f_pd <-svydesign(ids = indiv_femme$ident_fa, data = indiv_femme, weights = indiv_femme$poidsi)
+cprop(svytable(~s_medeciq_d+originegeo_rec, indiv_f_pd))
+cprop(svytable(~s_medeciq_d+group1, indiv_f_pd))
+```
+
+```{r, echo = FALSE}
+ggsurvey(indiv_f_pd) +
+  aes(x = originegeo_rec, fill = s_medeciq_d) +
+  geom_bar(position = "fill") +
+  scale_fill_hue(direction = 1) +
+  labs(
+    x = NULL,
+    y = "Proportion",
+    fill = "Recours au gynécologue"
+  ) +
+  coord_flip() +
+  theme(legend.position = "bottom")
+```
+
+En fait, parmi les immigrés, c'est l'origine qui recourt le moins globalement : 13.4% des immigrés originaires de Chine n'ont pas recouru à un professionnel de santé dans les 12 derniers mois, contre 6% en moyenne des immigrés et 5% de la population non immigrée ni originaire d'Outre-mer et descendant de deux parents non immigrés et non originaires d'Outre-mer.
+
+```{r, include = FALSE}
+cprop(svytable(~s_medeciq_g+origine_tous_g2, indiv_pd))
+cprop(svytable(~s_medeciq_g+group1, indiv_pd))
+```
+
+```{r}
+ggsurvey(indiv_pd) +
+  aes(x = originegeo_rec, fill = s_medeciq_g) +
+  geom_bar(position = "fill") +
+  scale_fill_hue(direction = 1) +
+  labs(
+    x = NULL,
+    y = "Proportion",
+    fill = "Pas de recours"
+  ) +
+  coord_flip() +
+  theme(legend.position = "bottom")
+```
+
+C'est vrai pour toutes les spécialités, mais particulièrement pour la modalité "autre spécialité" : ils ne sont que 11% a avoir recouru à un autre type de spécialiste que dentiste ophtalmo psychiatre gynéco, contre 22,4% des immigrés toutes origines confondues et 30 % de la population non immigrée ni originaire d'Outre-mer et descendant de deux parents non immigrés et non originaires d'Outre-mer.
+
+```{r, include =FALSE}
+cprop(svytable(~s_medeciq_f+origine_tous_g2, indiv_pd))
+cprop(svytable(~s_medeciq_f+group1, indiv_pd))
+```
+
+
+```{r, echo = FALSE}
+
+ggsurvey(indiv_pd) +
+  aes(x = originegeo_rec, fill = s_medeciq_f) +
+  geom_bar(position = "fill") +
+  scale_fill_hue(direction = 1) +
+  labs(
+    x = NULL,
+    y = "Proportion",
+    fill = "Recours à un autre spécialiste"
+  ) +
+  coord_flip() +
+  theme(legend.position = "bottom")
+```
+Ils renoncent moins souvent aux soins que la population née en France métropolitaine et que plusieurs autres origines d'immigrés.
+```{r, echo  = FALSE}
+ggsurvey(indiv_pd) +
+  aes(x = originegeo_rec, fill = s_renonc) +
+  geom_bar(position = "fill") +
+  scale_fill_hue(direction = 1) +
+  labs(
+    x = NULL,
+    y = "Proportion",
+    fill = "Renoncement"
+  ) +
+  coord_flip() +
+  theme(legend.position = "bottom") 
+```
+
+Ils sont plutôt en bonne santé par rapport à d'autres origines, mais de manière comparable à la population née en France métropolitaine ou aux immigrés d'Afrique subsaharienne.
+```{r, echo = FALSE}
+ggsurvey(indiv_pd) +
+  aes(x = originegeo_rec, fill = s_etat_rec) +
+  geom_bar(position = "fill") +
+  scale_fill_hue(direction = 1) +
+  labs(
+    x = NULL,
+    y = "Proportion",
+    fill = "Etat de santé perçu"
+  ) +
+  coord_flip() +
+  theme(legend.position = "bottom")
+```
+
+## Quel facteur explicatif?{.tabset .tabset-fade}
+
+### Les discriminations?
+
+Les immigrés originaires de Chine ne déclarent pas plus de discriminations par les professionnels de santé que les autres : ils sont 3.7% à en déclarer, contre 5.5% dans la population née en France métropolitaine et 10% des immigrés originaires d'Afrique sahélienne.
+
+```{r, include = FALSE}
+cprop(svytable(~s_traite+originegeo_rec, indiv_pd))
+```
+
+
+
+
+
+
+
+
+
+### La couverture sociale?
+
+Ils ne sont pas non plus moins bien couverts : 
+```{r, echo = FALSE, fig.width=10}
+ggsurvey(indiv_pd) +
+  aes(x = originegeo_rec, fill = s_secuq) +
+  geom_bar(position = "fill") +
+  scale_fill_hue(direction = 1) +
+  labs(
+    x = NULL,
+    y = "Proportion",
+    fill = "Couverture sociale"
+  ) +
+  coord_flip() +
+  theme(legend.position = "bottom") +
+  theme(legend.position = "bottom") 
+```
+
+### La langue?
+
+Les immigrés originaires de Chine sont ceux qui ont le plus de difficultés avec le français, suivis des autres immigrés originaires d'Asie. 
+
+
+```{r, echo=FALSE}
+ggsurvey(indiv_pd) +
+ aes(x = originegeo2, fill = q_franc) +
+ geom_bar(position = "fill") +
+  labs(
+    x = "Origine",
+    y = "Proportion",
+    fill = "Difficultés en français notées par l'enquêteur"
+  ) +
+ coord_flip() +  scale_fill_brewer(palette = "Oranges")+
+  theme(legend.position = "bottom") 
+```
+Sur tous les immigrés, on dirait que la maîtrise de la langue compte pour le frottis (12 pts de pourcentage de différence) mais pas pour le recours au généraliste.
+
+```{r, echo = FALSE}
+indiv_immig<- indiv %>% filter(group1=="Immigré (né étranger à l'étranger y compris réintégrés)") %>% #10396
+  filter(s_medeciq_flag=="A répondu")
+indiv_immig_frott<- indiv %>% filter(group1=="Immigré (né étranger à l'étranger y compris réintégrés)") %>% #10396
+  filter(!is.na(frott_ap_25))
+indiv_immig_frott_pd <-svydesign(ids = indiv_immig_frott$ident_fa, data = indiv_immig_frott, weights = indiv_immig_frott$poidsi)
+
+indiv_immig_frott_pd <-svydesign(ids = indiv_immig_frott$ident_fa, data = indiv_immig_frott, weights = indiv_immig_frott$poidsi)
+
+ggsurvey(indiv_immig_pd) +
+  aes(x = s_medeciq_a, fill = q_franc) +
+  geom_bar(position = "fill")  +
+  labs(
+    x = "Recours au généraliste",
+    y = "Proportion",
+    fill = "Maîtrise du français",
+    # title = "Champ : Immigrés"
+  ) +
+  scale_fill_brewer(palette = "Oranges") +
+  coord_flip()+
+     theme(legend.position = "bottom")
+    # scale_x_discrete(labels = NULL)
+
+
+ggsurvey(indiv_immig_frott_pd) +
+  aes(x = frott_ap_25, fill = q_franc) +
+  geom_bar(position = "fill") +
+  labs(
+    x = NULL,
+    y = "Proportion",
+    fill = "Maîtrise du français",
+    # title = "Champ : Immigrés"
+  ) +
+ scale_fill_brewer(palette = "Oranges") +
+  coord_flip() +
+   theme(legend.position = "bottom")
+
+ggsurvey(indiv_chine_pd) +
+  aes(x = s_medeciq_f, fill = q_franc) +
+  geom_bar(position = "fill") +
+  labs(
+    x = "Origine",
+    y = "Proportion",
+    fill = "Frottis",
+    title = "Champ : Immigrés"
+  ) +
+ scale_fill_brewer(palette = "Oranges") +
+  coord_flip() +
+  theme_minimal()
+```
+Ces résultats cachent une grande hétérogénéité entre les origines : on compare ici Turquie Moyen Orient, Autres pays d'Asie et Chine (les origines avec la plus faible maîtrise du français). 
+
+Ches les immigrés originaires de Chine c'est le contraire, ça semble avoir plutôt un impact sur le recours au généraliste (5 points de pourcentage) qu'au frottis.
+
+```{r, echo = FALSE}
+indiv_chine<- indiv %>% filter(originegeo_rec=="Chine")#594
+
+indiv_chine_frott<- indiv %>% filter(originegeo_rec=="Chine") %>% #594
+    filter(!is.na(frott_ap_25))
+
+indiv_chine_pd <-svydesign(ids = indiv_chine$ident_fa, data = indiv_chine, weights = indiv_chine$poidsi)
+
+indiv_chine_frott_pd <-svydesign(ids = indiv_chine_frott$ident_fa, data = indiv_chine_frott, weights = indiv_chine_frott$poidsi)
+
+
+ggsurvey(indiv_chine_pd) +
+  aes(x = s_medeciq_a, fill = q_franc) +
+  geom_bar(position = "fill")  +
+  labs(
+    x = "Origine",
+    y = "Proportion",
+    fill = "Recours au généraliste",
+    title = "Champ : Immigrés originaires de Chine"
+  ) +
+  scale_fill_brewer(palette = "Oranges") +
+  coord_flip() +
+  theme_minimal()
+
+ggsurvey(indiv_chine_frott_pd) +
+    aes(x = frott_ap_25, fill = q_franc) +
+    geom_bar(position = "fill")  +
+    labs(
+        x = NULL,
+        y = "Proportion",
+        fill = "Maîtrise du français",
+     title = "Chine"
+    ) +
+    scale_fill_brewer(palette = "Oranges") +
+    coord_flip() +
+    theme(legend.position = "bottom")
+
+ggsurvey(indiv_chine_frott_pd) +
+    aes(x = q_franc , fill = frott_ap_25) +
+    geom_bar(position = "fill")  +
+    labs(
+        x = "Maîtrise du français",
+        y = "Proportion",
+        fill = "Dans les 3 dernières années...",
+     title = "Chine"
+    ) + scale_fill_manual(values=c( "#40B330", "#FF4040","#999999")) +
+    coord_flip() +
+    theme(legend.position = "bottom")
+
+
+```
+A l'inverse pour les immigrés originaires d'autres pays d'Asie comme Turquie/MO : on voit un gros effet sur le frottis (14/18 pts de pourcentage de différence)
+```{r, echo=FALSE}
+indiv_asie<- indiv %>% filter(originegeo_rec=="Autres pays d'Asie")#318 %>% 
+indiv_asie_pd <-svydesign(ids = indiv_asie$ident_fa, data = indiv_asie, weights = indiv_asie$poidsi)
+
+ggsurvey(indiv_asie_pd) +
+  aes(x = s_medeciq_a, fill = q_franc) +
+  geom_bar(position = "fill") +
+  labs(
+    x = "Origine",
+    y = "Proportion",
+    fill = "Recours au généraliste",
+    title = "Champ : Immigrés originaires d'Autres pays d'Asie"
+  ) +
+  scale_fill_brewer(palette = "Oranges") +
+  coord_flip() +
+  theme_minimal()
+
+ggsurvey(indiv_asie_pd) +
+  aes(x = frott_ap_25, fill = q_franc) +
+  geom_bar(position = "fill") +
+  labs(
+    x = "Origine",
+    y = "Proportion",
+    fill = "Frottis",
+    title = "Champ : Immigrés originaires d'Autres pays d'Asie"
+  ) +
+  scale_fill_brewer(palette = "Oranges") +
+  coord_flip() +
+  theme_minimal()
+
+indiv_mo<- indiv %>% filter(originegeo_rec=="Turquie ou Moyen-Orient")#1057
+indiv_mo_pd <-svydesign(ids = indiv_mo$ident_fa, data = indiv_mo, weights = indiv_mo$poidsi)
+
+indiv_mo_frott <- indiv %>% filter(originegeo_rec=="Turquie ou Moyen-Orient") %>% filter(!is.na(frott_ap_25))
+indiv_mo_frott_pd <-svydesign(ids = indiv_mo_frott$ident_fa, data = indiv_mo_frott, weights = indiv_mo_frott$poidsi)
+
+
+ggsurvey(indiv_mo_pd) +
+  aes(x = s_medeciq_a, fill = q_franc) +
+  geom_bar(position = "fill")+
+  labs(
+    x = "Origine",
+    y = "Proportion",
+    fill = "Recours au généraliste",
+    title = "Champ : Immigrés originaires de la Turquie ou du Moyen-Orient"
+  ) +
+  scale_fill_brewer(palette = "Oranges") +
+  coord_flip() +
+  theme_minimal()
+
+ggsurvey(indiv_mo_frott_pd) +
+  aes(x = q_franc, fill = frott_ap_25) +
+  geom_bar(position = "fill")+
+  labs(
+    x = "Maîtrise du français",
+    y = "Proportion",
+    fill = "Dans les 3 dernières années...",
+    title = "Turquie, Moyen-Orient"
+  )  + scale_fill_manual(values=c( "#40B330", "#FF4040","#999999")) +
+  coord_flip() +     theme(legend.position = "bottom")
+
+```
+Les immigrés originaires de Chine semblent ainsi également atypique sur l'effet de la langue sur le recours.
+
+### Effet de l'état de santé
+
+Au-delà du relativement bon état de santé des immigrés originaires de Chine, cet état de santé semble avoir plus d'effet sur leur absence de recours que sur le reste de la population (pas de recours préventif?).
+
+```{r, echo =FALSE}
+ggsurvey(indiv_chine_pd) +
+  aes(x = s_etat_rec, fill = s_medeciq_g) +
+  geom_bar(position = "fill") +
+  scale_fill_hue(direction = 1) +
+  labs(
+    x = "Etat de santé déclaré",
+    y = "Proportion",
+    fill = "Pas de recours", subtitle = "Champ : Immigrés originaires de Chine"
+  ) +
+  coord_flip() +
+  theme(legend.position = "bottom") 
+
+ggsurvey(indiv_pd) +
+  aes(x = s_etat_rec, fill = s_medeciq_g) +
+  geom_bar(position = "fill") +
+  scale_fill_hue(direction = 1) +
+  labs(
+    x = "Etat de santé déclaré",
+    y = "Proportion",
+    fill = "Pas de recours", subtitle = "Champ : Toute la population"
+  ) +
+  coord_flip() +
+  theme(legend.position = "bottom") 
+
+
+```
+
+### Communauté?
+Derrière ça on pense peut-être aux médecins traditionnelles?
+On utilise une question sur l'origine des amis pour essayer de voir ça
+Les immigrés originaires de Chine sont parmi les immigrés ceux qui ont le plus d'amis de la même origine qu'eux.
+
+```{r}
+indiv_chine<- indiv %>% filter(originegeo_rec=="Chine") %>% #594
+  filter(s_medeciq_flag == "A répondu")
+indiv_chine_pd <-svydesign(ids = indiv_chine$ident_fa, data = indiv_chine, weights = indiv_chine$poidsi)
+indiv_mo<- indiv %>% filter(originegeo_rec=="Turquie ou Moyen-Orient") %>% #594
+  filter(s_medeciq_flag == "A répondu")
+indiv_mo_pd <-svydesign(ids = indiv_mo$ident_fa, data = indiv_mo, weights = indiv_mo$poidsi)
+```
+
+
+```{r, echo =FALSE}
+ggsurvey(indiv_pd) +
+ aes(x = originegeo2, fill = a_rorig_rec) +
+ geom_bar(position = "fill") +
+ scale_fill_hue(direction = 0) +
+  labs(
+    x = "Origine",
+    y = "Proportion",
+    fill = "Amis de la même origine\n hors famille rencontrés \ndans les 2 dernières semaines"
+  ) + scale_fill_manual(values = c("Presque tous" = "#016c59",      "Plus de la moitié" = "#1c9099",       "La moitié"   = "#67a9cf", "Moins de la moitié" = "#a6bddb",     "Presque aucun ou aucun" ="#d0d1e6",        "Pas d'amis hors famille" ="#fd8d3c", "Refus ou ne sait pas" ="#636363"))+
+ coord_flip() 
+  # theme(legend.position = "bottom") 
+```
+
+Les immigrés originaires de Chine ayant une grande proportion d'amis de même origine semblent plutôt avoir davantage recours au généraliste. Pour le frottis, c'est plutôt l'isolement qui favorise le non-recours.
+```{r, echo=FALSE}
+ggsurvey(indiv_chine_pd) +
+  aes(x = s_medeciq_a, fill = a_rorig_rec) +
+  geom_bar(position = "fill") +
+  labs(
+    x = "Recours au généraliste",
+    y = "Proportion",
+    fill = "Amis de même origine", subtitle = "Chine"
+  ) + scale_fill_manual(values = c("Presque tous" = "#016c59",      "Plus de la moitié" = "#1c9099",       "La moitié"   = "#67a9cf", "Moins de la moitié" = "#a6bddb",     "Presque aucun ou aucun" ="#d0d1e6",        "Pas d'amis hors famille" ="#fd8d3c", "Refus ou ne sait pas" ="#636363"))+
+  coord_flip() 
+
+ggsurvey(indiv_mo_pd) +
+  aes(x = s_medeciq_a, fill = a_rorig_rec) +
+  geom_bar(position = "fill") +
+  labs(
+    x = "Recours au généraliste",
+    y = "Proportion",
+    fill = "Amis de même origine", subtitle = "Turquie, Moyen Orient"
+  ) + scale_fill_manual(values = c("Presque tous" = "#016c59",      "Plus de la moitié" = "#1c9099",       "La moitié"   = "#67a9cf", "Moins de la moitié" = "#a6bddb",     "Presque aucun ou aucun" ="#d0d1e6",        "Pas d'amis hors famille" ="#fd8d3c", "Refus ou ne sait pas" ="#636363"))+
+  coord_flip() 
+
+ggsurvey(indiv_chine_pd) +
+  aes(x = frott_ap_25, fill = a_rorig_rec) +
+  geom_bar(position = "fill") +
+  labs(
+    x = "Frottis",
+    y = "Proportion",
+    fill = "Amis de même origine", subtitle = "Champ : Immigrés originaires de Chine"
+  ) +
+  scale_fill_manual(values = c("Presque tous" = "#016c59",      "Plus de la moitié" = "#1c9099",       "La moitié"   = "#67a9cf", "Moins de la moitié" = "#a6bddb",     "Presque aucun ou aucun" ="#d0d1e6",        "Pas d'amis hors famille" ="#fd8d3c", "Refus ou ne sait pas" ="#636363"))+
+  coord_flip() +
+  theme(legend.position = "bottom") 
+
+```
+
+
+
+### Profession
+
+```{r, echo=FALSE, fig.height= 8}
+ggsurvey(indiv_pd) +
+ aes(x = originegeo_rec, fill = csnq_ego) +
+ geom_bar(position = "fill") +
+ scale_fill_hue(direction = 1) +
+  labs(
+    x = "Origine",
+    y = "Proportion",
+    fill = "Profession"
+  ) +
+ coord_flip() +
+  theme(legend.position = "bottom") 
+```
+
+Beaucoup d'employés non qualifiés parmi les immigrés originaires de chine
+
+```{r, echo=FALSE}
+ggsurvey(indiv_pd) +
+ aes(x = originegeo_rec, fill = as.factor(prodesante)) +
+ geom_bar(position = "fill") +
+ scale_fill_hue(direction = 1) +
+  labs(
+    x = "Origine",
+    y = "Proportion",
+    fill = "Professionnel de santé"
+  ) +
+ coord_flip() +
+  theme(legend.position = "bottom") 
+```
+
+
+### Effet naissances pour frottis
+
+le fait d'avoir des enfants a beaucoup moins d'effet sur le recours au frottis des immigrées originaires de Chine que sur toute la population : sur toute la population on passe de 24% à 7% de personnes qui ont pas de frottis, pour les immigrées originaires de chine on passe de 35.4% à 26.5%.
+Alors que pour les immigrées originaires de Turquie ou du Moyen Orient très gros effet
+
+
+```{r, include = FALSE}
+indiv_4 <- indiv_graphe %>% filter(originegeo_rec == "Chine")# 347 femmes
+indiv4_pd <-svydesign(ids = indiv_4$ident_fa, data = indiv_4, weights = indiv_4$poidsi)
+indiv_5 <- indiv_graphe %>% filter(originegeo_rec == "Turquie ou Moyen-Orient")# 476 femmes
+indiv5_pd <-svydesign(ids = indiv_5$ident_fa, data = indiv_5, weights = indiv_5$poidsi)
+
+```
+
+```{r, echo =FALSE}
+ggsurvey(indiv_graphe_pd) +
+  aes(x = nais_3ans, fill = frott_ap_25) +
+  geom_bar(position = "fill") +
+  scale_fill_hue(direction = 1) +
+  labs(
+    x = NULL,
+    y = "Proportion",
+    fill = "Dans les 3 dernières années...",
+    title = "Toute la population"
+  ) +
+  coord_flip() +
+  theme(legend.position = "bottom")+ scale_fill_manual(values=c( "#40B330", "#FF4040","#999999"))
+
+ggsurvey(indiv4_pd) +
+  aes(x = nais_3ans, fill = frott_ap_25) +
+  geom_bar(position = "fill") +
+  scale_fill_hue(direction = 1) +
+  labs(
+    x = NULL,
+    y = "Proportion",
+    fill = "Dans les 3 dernières années...",
+    title = "Chine"
+  ) +
+  coord_flip() +
+  theme(legend.position = "bottom")+ scale_fill_manual(values=c( "#40B330", "#FF4040","#999999"))
+
+ggsurvey(indiv5_pd) +
+  aes(x = nais_3ans, fill = frott_ap_25) +
+  geom_bar(position = "fill") +
+  scale_fill_hue(direction = 1) +
+  labs(
+    x = NULL,
+    y = "Proportion",
+    fill = "Dans les 3 dernières années...",
+    title = "Turquie, Moyen-Orient"
+  ) +
+  coord_flip() +
+  theme(legend.position = "bottom") + scale_fill_manual(values=c( "#40B330", "#FF4040","#999999"))
+
+```
+
+### Effet âge pour frottis
+
+le fait d'avoir des enfants a beaucoup moins d'effet sur le recours au frottis des immigrées originaires de Chine que sur toute la population : sur toute la population on passe de 24% à 7% de personnes qui ont pas de frottis, pour les immigrées originaires de chine on passe de 35.4% à 26.5%.
+Alors que pour les immigrées originaires de Turquie ou du Moyen Orient très gros effet
+
+
+```{r, include = FALSE}
+indiv_4 <- indiv_graphe %>% filter(originegeo_rec == "Chine")# 347 femmes
+indiv4_pd <-svydesign(ids = indiv_4$ident_fa, data = indiv_4, weights = indiv_4$poidsi)
+indiv_5 <- indiv_graphe %>% filter(originegeo_rec == "Turquie ou Moyen-Orient")# 476 femmes
+indiv5_pd <-svydesign(ids = indiv_5$ident_fa, data = indiv_5, weights = indiv_5$poidsi)
+
+```
+
+```{r, echo =FALSE}
+ggsurvey(indiv_graphe_pd) +
+  aes(x = agenq_cat, fill = frott_ap_25) +
+  geom_bar(position = "fill") +
+  scale_fill_hue(direction = 1) +
+  labs(
+    x = NULL,
+    y = "Proportion",
+    fill = "Dans les 3 dernières années...",
+    title = "Toute la population"
+  ) +
+  coord_flip() +
+  theme(legend.position = "bottom")+ scale_fill_manual(values=c( "#40B330", "#FF4040","#999999"))
+
+ggsurvey(indiv4_pd) +
+  aes(x = agenq_cat, fill = frott_ap_25) +
+  geom_bar(position = "fill") +
+  scale_fill_hue(direction = 1) +
+  labs(
+    x = NULL,
+    y = "Proportion",
+    fill = "Dans les 3 dernières années...",
+    title = "Chine"
+  ) +
+  coord_flip() +
+  theme(legend.position = "bottom")+ scale_fill_manual(values=c( "#40B330", "#FF4040","#999999"))
+
+ggsurvey(indiv5_pd) +
+  aes(x = agenq_cat, fill = frott_ap_25) +
+  geom_bar(position = "fill") +
+  scale_fill_hue(direction = 1) +
+  labs(
+    x = NULL,
+    y = "Proportion",
+    fill = "Dans les 3 dernières années...",
+    title = "Turquie, Moyen-Orient"
+  ) +
+  coord_flip() +
+  theme(legend.position = "bottom") + scale_fill_manual(values=c( "#40B330", "#FF4040","#999999"))
+
+```
+
+### Effet couple pour frottis
+
+le fait d'avoir des enfants a beaucoup moins d'effet sur le recours au frottis des immigrées originaires de Chine que sur toute la population : sur toute la population on passe de 24% à 7% de personnes qui ont pas de frottis, pour les immigrées originaires de chine on passe de 35.4% à 26.5%.
+Alors que pour les immigrées originaires de Turquie ou du Moyen Orient très gros effet
+
+
+```{r, include = FALSE}
+indiv_graphe$couplee_rec <- indiv_graphe$couplee %>%
+  fct_recode(
+    "Couple cohabitant" = "Vit actuellement en couple avec une personne qui vit dans le logement",
+    "Ne vit pas en couple" = "Vit actuellement en couple avec une personne qui vit en dehors du logement"
+  )
+indiv_graphe_pd <-svydesign(ids = indiv_graphe$ident_fa, data = indiv_graphe, weights = indiv_graphe$poidsi)
+
+indiv_4 <- indiv_graphe %>% filter(originegeo_rec == "Chine")# 347 femmes
+indiv4_pd <-svydesign(ids = indiv_4$ident_fa, data = indiv_4, weights = indiv_4$poidsi)
+indiv_5 <- indiv_graphe %>% filter(originegeo_rec == "Turquie ou Moyen-Orient")# 476 femmes
+indiv5_pd <-svydesign(ids = indiv_5$ident_fa, data = indiv_5, weights = indiv_5$poidsi)
+
+```
+
+```{r, echo =FALSE}
+ggsurvey(indiv_graphe_pd) +
+  aes(x = couplee_rec, fill = frott_ap_25) +
+  geom_bar(position = "fill") +
+  scale_fill_hue(direction = 1) +
+  labs(
+    x = NULL,
+    y = "Proportion",
+    fill = "Dans les 3 dernières années...",
+    title = "Toute la population"
+  ) +
+  coord_flip() +
+  theme(legend.position = "bottom")+ scale_fill_manual(values=c( "#40B330", "#FF4040","#999999"))
+
+ggsurvey(indiv4_pd) +
+  aes(x = couplee_rec, fill = frott_ap_25) +
+  geom_bar(position = "fill") +
+  scale_fill_hue(direction = 1) +
+  labs(
+    x = NULL,
+    y = "Proportion",
+    fill = "Dans les 3 dernières années...",
+    title = "Chine"
+  ) +
+  coord_flip() +
+  theme(legend.position = "bottom")+ scale_fill_manual(values=c( "#40B330", "#FF4040","#999999"))
+
+ggsurvey(indiv5_pd) +
+  aes(x = couplee_rec, fill = frott_ap_25) +
+  geom_bar(position = "fill") +
+  scale_fill_hue(direction = 1) +
+  labs(
+    x = NULL,
+    y = "Proportion",
+    fill = "Dans les 3 dernières années...",
+    title = "Turquie, Moyen-Orient"
+  ) +
+  coord_flip() +
+  theme(legend.position = "bottom") + scale_fill_manual(values=c( "#40B330", "#FF4040","#999999"))
+
+```
+
+
+
+### Lien ségrégation/accès?
+
+```{r, echo=FALSE, fig.height= 8}
+ggsurvey(indiv_bdd_pd) +
+ aes(x = originegeo, fill = iris_pct_imchi) +
+ geom_bar(position = "fill") +
+ scale_fill_hue(direction = 1) +
+  labs(
+    x = "Origine",
+    y = "Proportion",
+    fill = "Profession"
+  ) +
+ coord_flip() +
+  theme(legend.position = "bottom") 
+```
+
+
+### Faire un point sur Turquie MO valeurs tradi pr frottis (femmes qui étudient peu etc...)
+
+
+#### Régression
+```{r}
+indiv_reg <- indiv_reg %>% 
+  mutate(iris_pct_imchi_cat = ifelse(iris_pct_imchi>=5, "Plus de 5% d'immigrés originaires de Chine dans le quartier","Moins de 5% d'immigrés originaires de Chine dans le quartier"))
+indiv_chine<- indiv_reg %>% filter(originegeo_rec=="Chine")  %>%#594 
+  filter(csnq_actif_rec!="NSP, refus, incodable") %>% #531
+  filter(a_rorig_rec!="Refus ou ne sait pas")#525
+indiv_chine_pd <-svydesign(ids = indiv_chine$ident_fa, data = indiv_chine, weights = indiv_chine$poidsi)
+
+
+indiv_chine_frott <- indiv_chine %>% 
+  filter(sexee=="Féminin") %>% filter(agenq >= 25)# 12 466
+
+indiv_chine_frott_pd <-svydesign(ids = indiv_chine_frott$ident_fa, data = indiv_chine_frott, weights = indiv_chine_frott$poidsi)
+
+
+
+
+indiv_chine_gyn <- indiv_chine %>% 
+  filter(sexee=="Féminin")
+
+indiv_chine_gyn_pd <-svydesign(ids = indiv_chine_gyn$ident_fa, data = indiv_chine_gyn, weights = indiv_chine_gyn$poidsi)
+
+indiv_mo<- indiv_reg %>% filter(originegeo_rec=="Turquie ou Moyen-Orient")  %>%#594 
+  filter(csnq_actif_rec!="NSP, refus, incodable") %>% #531
+  filter(a_rorig_rec!="Refus ou ne sait pas")#525
+
+indiv_mo_frott <- indiv_mo %>% 
+  filter(sexee=="Féminin") %>% filter(agenq >= 25)# 12 466
+
+indiv_mo_frott_pd <-svydesign(ids = indiv_mo_frott$ident_fa, data = indiv_mo_frott, weights = indiv_mo_frott$poidsi)
+```
+
+
+```{r}
+modelg <- svyglm(as.factor(s_medeciq_g) ~   
+                  agenq+enfant+
+                  s_etat_rec+
+                  q_franc+
+                  # s_traite_rec+
+                  sexee +
+                  # origine_tous_g2+
+                   csnq_actif_rec+diplome+tr_revenu +
+                   # covid+
+                   couplee_rec #+
+                  # enfant +
+                  # durtotfrm +
+                  # a_rfami+
+                  # a_ramis+
+                  # a_retud+
+                  # a_rorig+
+                  # a_rquart+
+                  # tuu2017 +
+                  # l_immi +
+                  # iris_pct_sedent +
+                  # iris_pct_immi
+                ,family = quasibinomial,
+                design = indiv_chine_pd)
+
+
+```
+
+
+
+```{r, include = FALSE}
+modela <- svyglm(as.factor(s_medeciq_a) ~   
+                  agenq+enfant+
+                  s_etat_rec+
+                  q_franc+
+                  # s_traite_rec+
+                  sexee +
+                  # origine_tous_g2+
+                   csnq_actif_rec+diplome+tr_revenu +
+                   # covid+
+                   couplee_rec #+
+                  # enfant +
+                  # durtotfrm +
+                  # a_rfami+
+                  # a_ramis+
+                  # a_retud+
+                  # a_rorig+
+                  # a_rquart+
+                  # tuu2017 +
+                  # l_immi +
+                  # iris_pct_sedent +
+                  # iris_pct_immi
+                ,family = quasibinomial,
+                design = indiv_chine_pd)
+modelb <- svyglm(as.factor(s_medeciq_b) ~   
+                  agenq+enfant+
+                  s_etat_rec+
+                  q_franc+
+                  # s_traite_rec+
+                  sexee +
+                   # covid+
+                  # origine_tous_g2+
+                   csnq_actif_rec+diplome+tr_revenu +
+                   couplee_rec #+
+                  # enfant +
+                  # durtotfrm +
+                  # a_rfami+
+                  # a_ramis+
+                  # a_retud+
+                  # a_rorig+
+                  # a_rquart+
+                  # tuu2017 +
+                  # l_immi +
+                  # iris_pct_sedent +
+                  # iris_pct_immi
+                ,family = quasibinomial,
+                design = indiv_chine_pd)
+modelc <- svyglm(as.factor(s_medeciq_c) ~   
+                  agenq+enfant+
+                  s_etat_rec+
+                  q_franc+
+                  # s_traite_rec+
+                  sexee +
+                  # origine_tous_g2+
+                   csnq_actif_rec+diplome+tr_revenu +
+                   # covid+
+                   couplee_rec #+
+                  # enfant +
+                  # durtotfrm +
+                  # a_rfami+
+                  # a_ramis+
+                  # a_retud+
+                  # a_rorig+
+                  # a_rquart+
+                  # tuu2017 +
+                  # l_immi +
+                  # iris_pct_sedent +
+                  # iris_pct_immi
+                ,family = quasibinomial,
+                design = indiv_chine_pd)
+
+modeld <- svyglm(as.factor(s_medeciq_d) ~ nais_3ans_rec+couplee_rec+agenq_cat_rec+agenq+s_etat_rec+csnq_actif_rec+diplome+tr_revenu+q_franc+contramed+
+                   # covid +
+                   c_nobbpq_e_rec
+             , family = quasibinomial,
+  design = indiv_chine_gyn_pd)
+
+
+modele <- svyglm(as.factor(s_medeciq_e) ~   
+                  agenq+enfant+
+                  s_etat_rec+
+                  q_franc+
+                  # s_traite_rec+
+                  sexee +
+                   # covid+
+                  # origine_tous_g2+
+                   csnq_actif_rec+diplome+tr_revenu +
+                   couplee_rec #+
+                  # enfant +
+                  # durtotfrm +
+                  # a_rfami+
+                  # a_ramis+
+                  # a_retud+
+                  # a_rorig+
+                  # a_rquart+
+                  # tuu2017 +
+                  # l_immi +
+                  # iris_pct_sedent +
+                  # iris_pct_immi
+                ,family = quasibinomial,
+                design = indiv_chine_pd)
+modelf <- svyglm(as.factor(s_medeciq_f) ~   
+                  agenq+enfant+
+                  s_etat_rec+
+                  q_franc+
+                  # s_traite_rec+
+                  sexee +
+                  # origine_tous_g2+
+                   csnq_actif_rec+diplome+tr_revenu +
+                   # covid+
+                   couplee_rec #+
+                  # enfant +
+                  # durtotfrm +
+                  # a_rfami+
+                  # a_ramis+
+                  # a_retud+
+                  # a_rorig+
+                  # a_rquart+
+                  # tuu2017 +
+                  # l_immi +
+                  # iris_pct_sedent +
+                  # iris_pct_immi
+                ,family = quasibinomial,
+                design = indiv_chine_pd)
+modelr <- svyglm(as.factor(s_renonc) ~   
+                  agenq+enfant+
+                  s_etat_rec+
+                  q_franc+
+                  # s_traite_rec+
+                  sexee +
+                  # origine_tous_g2+
+                   csnq_actif_rec+diplome+tr_revenu +
+                   # covid+
+                   couplee_rec #+
+                  # enfant +
+                  # durtotfrm +
+                  # a_rfami+
+                  # a_ramis+
+                  # a_retud+
+                  # a_rorig+
+                  # a_rquart+
+                  # tuu2017 +
+                  # l_immi +
+                  # iris_pct_sedent +
+                  # iris_pct_immi
+                ,family = quasibinomial,
+                design = indiv_chine_pd)
+
+model_frott <- svyglm(as.factor(frott_ap_25) ~ nais_3ans_rec+couplee_rec+agenq_cat_rec+agenq+s_etat_rec+csnq_actif_rec+diplome+tr_revenu+q_franc+ +contramed+covid+c_nobbpq_e_rec
+             , family = quasibinomial,
+  design = indiv_chine_frott_pd)
+```
+
+```{r, echo = FALSE, fig.height=8, fig.width=10}
+ggstats::ggcoef_compare(list("Généraliste"=modela , "Dentiste" =modelb, "Ophtalmo."=modelc,  "Autre spé." =modelf, "Gynéco."=modeld, "Frottis"=model_frott, "Non-rec." = modelg, "Renonc." = modelr), type = "faceted", exponentiate = TRUE, variable_labels = c("originegeo2" = "Origine", "couplee_rec" = "Couple", "agenq" = "Âge", "s_etat_rec" = "Etat de santé perçu", "q_franc" = "Maîtrise du français\n (évaluation par l'enquêteur.rice)",  "csnq_actif_rec" = "Classe sociale et activité", "nais_3ans_rec" = "Naissances dans les \n 3 dernières années", "agenq_cat_rec" = "Catégorie d'âge", "contramed"="Contraception", "c_nobbpq_e_rec" = "Jamais eu de rapports sexuels", "tr_revenu" ="Tranches de revenu", "diplome"="Diplôme"))#"s_traite_rec" = "Discrimination par \nprofessionnel de santé",
+```
+##### Avec comu
+```{r}
+modelg <- svyglm(as.factor(s_medeciq_g) ~   
+                  agenq+enfant+a_rorig_rec+
+                  s_etat_rec+
+                  q_franc+
+                  # s_traite_rec+
+                  sexee +
+                  # origine_tous_g2+
+                   csnq_actif_rec+diplome+tr_revenu +
+                   # covid+
+                   couplee_rec #+
+                  # enfant +
+                  # durtotfrm +
+                  # a_rfami+
+                  # a_ramis+
+                  # a_retud+
+                  # a_rorig+
+                  # a_rquart+
+                  # tuu2017 +
+                  # l_immi +
+                  # iris_pct_sedent +
+                  # iris_pct_immi
+                ,family = quasibinomial,
+                design = indiv_chine_pd)
+
+
+```
+
+
+
+```{r, include = FALSE}
+modela <- svyglm(as.factor(s_medeciq_a) ~   
+                  agenq+enfant+
+                  s_etat_rec+a_rorig_rec+
+                  q_franc+
+                  # s_traite_rec+
+                  sexee +
+                  # origine_tous_g2+
+                   csnq_actif_rec+diplome+tr_revenu +
+                   # covid+
+                   couplee_rec #+
+                  # enfant +
+                  # durtotfrm +
+                  # a_rfami+
+                  # a_ramis+
+                  # a_retud+
+                  # a_rorig+
+                  # a_rquart+
+                  # tuu2017 +
+                  # l_immi +
+                  # iris_pct_sedent +
+                  # iris_pct_immi
+                ,family = quasibinomial,
+                design = indiv_chine_pd)
+modelb <- svyglm(as.factor(s_medeciq_b) ~   
+                  agenq+enfant+
+                  s_etat_rec+
+                  q_franc+a_rorig_rec+
+                  # s_traite_rec+
+                  sexee +
+                   # covid+
+                  # origine_tous_g2+
+                   csnq_actif_rec+diplome+tr_revenu +
+                   couplee_rec #+
+                  # enfant +
+                  # durtotfrm +
+                  # a_rfami+
+                  # a_ramis+
+                  # a_retud+
+                  # a_rorig+
+                  # a_rquart+
+                  # tuu2017 +
+                  # l_immi +
+                  # iris_pct_sedent +
+                  # iris_pct_immi
+                ,family = quasibinomial,
+                design = indiv_chine_pd)
+modelc <- svyglm(as.factor(s_medeciq_c) ~   
+                  agenq+enfant+a_rorig_rec+
+                  s_etat_rec+
+                  q_franc+
+                  # s_traite_rec+
+                  sexee +
+                  # origine_tous_g2+
+                   csnq_actif_rec+diplome+tr_revenu +
+                   # covid+
+                   couplee_rec #+
+                  # enfant +
+                  # durtotfrm +
+                  # a_rfami+
+                  # a_ramis+
+                  # a_retud+
+                  # a_rorig+
+                  # a_rquart+
+                  # tuu2017 +
+                  # l_immi +
+                  # iris_pct_sedent +
+                  # iris_pct_immi
+                ,family = quasibinomial,
+                design = indiv_chine_pd)
+
+modeld <- svyglm(as.factor(s_medeciq_d) ~ nais_3ans_rec+couplee_rec+agenq_cat_rec+agenq+s_etat_rec+csnq_actif_rec+diplome+tr_revenu+q_franc+contramed+
+                   # covid +
+                   c_nobbpq_e_rec+a_rorig_rec
+             , family = quasibinomial,
+  design = indiv_chine_gyn_pd)
+
+
+modele <- svyglm(as.factor(s_medeciq_e) ~   
+                  agenq+enfant+
+                  s_etat_rec+
+                  q_franc+
+                  # s_traite_rec+
+                  sexee +
+                   # covid+
+                  # origine_tous_g2+
+                   csnq_actif_rec+diplome+tr_revenu +a_rorig_rec+
+                   couplee_rec #+
+                  # enfant +
+                  # durtotfrm +
+                  # a_rfami+
+                  # a_ramis+
+                  # a_retud+
+                  # a_rorig+
+                  # a_rquart+
+                  # tuu2017 +
+                  # l_immi +
+                  # iris_pct_sedent +
+                  # iris_pct_immi
+                ,family = quasibinomial,
+                design = indiv_chine_pd)
+modelf <- svyglm(as.factor(s_medeciq_f) ~   
+                  agenq+enfant+
+                  s_etat_rec+
+                  q_franc+
+                  # s_traite_rec+
+                  sexee +
+                  # origine_tous_g2+
+                   csnq_actif_rec+diplome+tr_revenu +a_rorig_rec+
+                   # covid+
+                   couplee_rec #+
+                  # enfant +
+                  # durtotfrm +
+                  # a_rfami+
+                  # a_ramis+
+                  # a_retud+
+                  # a_rorig+
+                  # a_rquart+
+                  # tuu2017 +
+                  # l_immi +
+                  # iris_pct_sedent +
+                  # iris_pct_immi
+                ,family = quasibinomial,
+                design = indiv_chine_pd)
+modelr <- svyglm(as.factor(s_renonc) ~   
+                  agenq+enfant+a_rorig_rec+
+                  s_etat_rec+
+                  q_franc+
+                  # s_traite_rec+
+                  sexee +
+                  # origine_tous_g2+
+                   csnq_actif_rec+diplome+tr_revenu +
+                   # covid+
+                   couplee_rec #+
+                  # enfant +
+                  # durtotfrm +
+                  # a_rfami+
+                  # a_ramis+
+                  # a_retud+
+                  # a_rorig+
+                  # a_rquart+
+                  # tuu2017 +
+                  # l_immi +
+                  # iris_pct_sedent +
+                  # iris_pct_immi
+                ,family = quasibinomial,
+                design = indiv_chine_pd)
+
+model_frott <- svyglm(as.factor(frott_ap_25) ~ nais_3ans_rec+couplee_rec+agenq_cat_rec+agenq+s_etat_rec+csnq_actif_rec+diplome+tr_revenu+q_franc+ +contramed+
+                        # covid+
+                        c_nobbpq_e_rec+a_rorig_rec
+             , family = quasibinomial,
+  design = indiv_chine_frott_pd)
+```
+
+```{r, echo = FALSE, fig.height=8, fig.width=10}
+ggstats::ggcoef_compare(list("Généraliste"=modela , "Dentiste" =modelb, "Ophtalmo."=modelc,  "Autre spé." =modelf, "Gynéco."=modeld, "Frottis"=model_frott, "Non-rec." = modelg, "Renonc." = modelr), conf.level = 0.90,type = "faceted", exponentiate = TRUE, variable_labels = c("couplee_rec" = "Couple", "agenq" = "Âge", "s_etat_rec" = "Etat de santé perçu", "q_franc" = "Maîtrise du français\n (évaluation par l'enquêteur.rice)",  "csnq_actif_rec" = "Classe sociale et activité", "nais_3ans_rec" = "Naissances dans les \n 3 dernières années", "agenq_cat_rec" = "Catégorie d'âge", "contramed"="Contraception", "c_nobbpq_e_rec" = "Jamais eu de rapports sexuels", "tr_revenu" ="Tranches de revenu", "diplome"="Diplôme"))#"s_traite_rec" = "Discrimination par \nprofessionnel de santé",
+```
+
+
+##### Avec segreg
+```{r}
+modelg <- svyglm(as.factor(s_medeciq_g) ~   
+                  agenq+enfant+iris_pct_imchi_cat+
+                  s_etat_rec+
+                  q_franc+
+                  # s_traite_rec+
+                  sexee +
+                  # origine_tous_g2+
+                   csnq_actif_rec+diplome+tr_revenu +
+                   # covid+
+                   couplee_rec #+
+                  # enfant +
+                  # durtotfrm +
+                  # a_rfami+
+                  # a_ramis+
+                  # a_retud+
+                  # a_rorig+
+                  # a_rquart+
+                  # tuu2017 +
+                  # l_immi +
+                  # iris_pct_sedent +
+                  # iris_pct_immi
+                ,family = quasibinomial,
+                design = indiv_chine_pd)
+
+
+```
+
+
+
+```{r, include = FALSE}
+modela <- svyglm(as.factor(s_medeciq_a) ~   
+                  agenq+enfant+
+                  s_etat_rec+iris_pct_imchi_cat+
+                  q_franc+
+                  # s_traite_rec+
+                  sexee +
+                  # origine_tous_g2+
+                   csnq_actif_rec+diplome+tr_revenu +
+                   # covid+
+                   couplee_rec #+
+                  # enfant +
+                  # durtotfrm +
+                  # a_rfami+
+                  # a_ramis+
+                  # a_retud+
+                  # a_rorig+
+                  # a_rquart+
+                  # tuu2017 +
+                  # l_immi +
+                  # iris_pct_sedent +
+                  # iris_pct_immi
+                ,family = quasibinomial,
+                design = indiv_chine_pd)
+modelb <- svyglm(as.factor(s_medeciq_b) ~   
+                  agenq+enfant+
+                  s_etat_rec+
+                  q_franc+iris_pct_imchi_cat+
+                  # s_traite_rec+
+                  sexee +
+                   # covid+
+                  # origine_tous_g2+
+                   csnq_actif_rec+diplome+tr_revenu +
+                   couplee_rec #+
+                  # enfant +
+                  # durtotfrm +
+                  # a_rfami+
+                  # a_ramis+
+                  # a_retud+
+                  # a_rorig+
+                  # a_rquart+
+                  # tuu2017 +
+                  # l_immi +
+                  # iris_pct_sedent +
+                  # iris_pct_immi
+                ,family = quasibinomial,
+                design = indiv_chine_pd)
+modelc <- svyglm(as.factor(s_medeciq_c) ~   
+                  agenq+enfant+iris_pct_imchi_cat+
+                  s_etat_rec+
+                  q_franc+
+                  # s_traite_rec+
+                  sexee +
+                  # origine_tous_g2+
+                   csnq_actif_rec+diplome+tr_revenu +
+                   # covid+
+                   couplee_rec #+
+                  # enfant +
+                  # durtotfrm +
+                  # a_rfami+
+                  # a_ramis+
+                  # a_retud+
+                  # a_rorig+
+                  # a_rquart+
+                  # tuu2017 +
+                  # l_immi +
+                  # iris_pct_sedent +
+                  # iris_pct_immi
+                ,family = quasibinomial,
+                design = indiv_chine_pd)
+
+modeld <- svyglm(as.factor(s_medeciq_d) ~ nais_3ans_rec+couplee_rec+agenq_cat_rec+agenq+s_etat_rec+csnq_actif_rec+diplome+tr_revenu+q_franc+contramed+
+                   # covid +
+                   c_nobbpq_e_rec+iris_pct_imchi_cat
+             , family = quasibinomial,
+  design = indiv_chine_gyn_pd)
+
+
+modele <- svyglm(as.factor(s_medeciq_e) ~   
+                  agenq+enfant+
+                  s_etat_rec+
+                  q_franc+
+                  # s_traite_rec+
+                  sexee +
+                   # covid+
+                  # origine_tous_g2+
+                   csnq_actif_rec+diplome+tr_revenu +iris_pct_imchi_cat+
+                   couplee_rec #+
+                  # enfant +
+                  # durtotfrm +
+                  # a_rfami+
+                  # a_ramis+
+                  # a_retud+
+                  # a_rorig+
+                  # a_rquart+
+                  # tuu2017 +
+                  # l_immi +
+                  # iris_pct_sedent +
+                  # iris_pct_immi
+                ,family = quasibinomial,
+                design = indiv_chine_pd)
+modelf <- svyglm(as.factor(s_medeciq_f) ~   
+                  agenq+enfant+
+                  s_etat_rec+
+                  q_franc+
+                  # s_traite_rec+
+                  sexee +
+                  # origine_tous_g2+
+                   csnq_actif_rec+diplome+tr_revenu +iris_pct_imchi_cat+
+                   # covid+
+                   couplee_rec #+
+                  # enfant +
+                  # durtotfrm +
+                  # a_rfami+
+                  # a_ramis+
+                  # a_retud+
+                  # a_rorig+
+                  # a_rquart+
+                  # tuu2017 +
+                  # l_immi +
+                  # iris_pct_sedent +
+                  # iris_pct_immi
+                ,family = quasibinomial,
+                design = indiv_chine_pd)
+modelr <- svyglm(as.factor(s_renonc) ~   
+                  agenq+enfant+iris_pct_imchi_cat+
+                  s_etat_rec+
+                  q_franc+
+                  # s_traite_rec+
+                  sexee +
+                  # origine_tous_g2+
+                   csnq_actif_rec+diplome+tr_revenu +
+                   # covid+
+                   couplee_rec #+
+                  # enfant +
+                  # durtotfrm +
+                  # a_rfami+
+                  # a_ramis+
+                  # a_retud+
+                  # a_rorig+
+                  # a_rquart+
+                  # tuu2017 +
+                  # l_immi +
+                  # iris_pct_sedent +
+                  # iris_pct_immi
+                ,family = quasibinomial,
+                design = indiv_chine_pd)
+
+model_frott <- svyglm(as.factor(frott_ap_25) ~ nais_3ans_rec+couplee_rec+agenq_cat_rec+agenq+s_etat_rec+csnq_actif_rec+diplome+tr_revenu+q_franc+ +contramed+
+                        # covid+
+                        c_nobbpq_e_rec+iris_pct_imchi_cat
+             , family = quasibinomial,
+  design = indiv_chine_frott_pd)
+```
+
+```{r, echo = FALSE, fig.height=8, fig.width=10}
+ggstats::ggcoef_compare(list("Généraliste"=modela , "Dentiste" =modelb, "Ophtalmo."=modelc,  "Autre spé." =modelf, "Gynéco."=modeld, "Frottis"=model_frott, "Non-rec." = modelg, "Renonc." = modelr), type = "faceted", exponentiate = TRUE, variable_labels = c("couplee_rec" = "Couple", "agenq" = "Âge", "s_etat_rec" = "Etat de santé perçu", "q_franc" = "Maîtrise du français\n (évaluation par l'enquêteur.rice)",  "csnq_actif_rec" = "Classe sociale et activité", "nais_3ans_rec" = "Naissances dans les \n 3 dernières années", "agenq_cat_rec" = "Catégorie d'âge", "contramed"="Contraception", "c_nobbpq_e_rec" = "Jamais eu de rapports sexuels", "tr_revenu" ="Tranches de revenu", "diplome"="Diplôme", "iris_pct_imchi_cat"="Pourcentages d'immigrés originaires de Chine dans l'IRIS"))#"s_traite_rec" = "Discrimination par \nprofessionnel de santé",conf.level = 0.90,
+```
+

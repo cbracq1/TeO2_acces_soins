@@ -51,6 +51,7 @@ indiv_mod_df <- indiv_mod %>%
   filter(tuu2017 %in% c("0", "Unité urbaine de 2 000 à 4 999 habitants","Unité urbaine de 5 000 à 9 999 habitants", "Unité urbaine de 10 000 à 19 999 habitants"))# Plus rural
 # %>% 
   # filter(tuu2017=="Unité urbaine de Paris")#Paris
+nrow(indiv_mod_df)#nombre d'enquêtés concernés
 ```
 
 # Régressions {.tabset .tabset-fade}
@@ -447,7 +448,7 @@ model_sf_nb <- reg0(indiv_mod_df$lib_sf_1km)
 
 b <- list(geom_vline(xintercept = 0, color = 'black'))
 
-mp <- modelplot("Généraliste (Nombre)"=model_medge_nb, "Gynécologue (Nombre)" = model_gyn_nb, "Sage-femme (Nombre)" = model_sf_nb),
+mp <- modelplot(list("Généraliste (Nombre)"=model_medge_nb, "Gynécologue (Nombre)" = model_gyn_nb, "Sage-femme (Nombre)" = model_sf_nb),
                 background = b,coef_omit = "Interc"
                 # coef_map = cm,
                 #coef_omit = "Interc|l_immiRefus (ne pas lire):group1Immigré (né étranger à l'étranger y compris réintégrés)|l_immiNSP (ne pas lire):group1Immigré (né étranger à l'étranger y compris réintégrés)|l_immiPresque tous sont d'origine immigrée:group1Originaire de l'Outre-mer|l_immiPlus de la moitié est d'origine immigrée:group1Originaire de l'Outre-mer|l_immiLa moitié est d'origine immigrée:group1Originaire de l'Outre-mer|l_immiMoins de la moitié est d'origine immigrée:group1Originaire de l'Outre-mer|l_immiRefus (ne pas lire):group1Originaire de l'Outre-mer|l_immiNSP (ne pas lire):group1Originaire de l'Outre-mer|l_immiPresque tous sont d'origine immigrée:group1Descendant G2 d'un ou deux immigré-s|l_immiPlus de la moitié est d'origine immigrée:group1Descendant G2 d'un ou deux immigré-s|l_immiLa moitié est d'origine immigrée:group1Descendant G2 d'un ou deux immigré-s|l_immiMoins de la moitié est d'origine immigrée:group1Descendant G2 d'un ou deux immigré-s|l_immiRefus (ne pas lire):group1Descendant G2 d'un ou deux immigré-s|l_immiNSP (ne pas lire):group1Descendant G2 d'un ou deux immigré-s|l_immiPresque tous sont d'origine immigrée:group1Descendant G2 d'un ou deux originaire-s de l'Outre-mer|l_immiPlus de la moitié est d'origine immigrée:group1Descendant G2 d'un ou deux originaire-s de l'Outre-mer|l_immiLa moitié est d'origine immigrée:group1Descendant G2 d'un ou deux originaire-s de l'Outre-mer|l_immiMoins de la moitié est d'origine immigrée:group1Descendant G2 d'un ou deux originaire-s de l'Outre-mer|l_immiRefus (ne pas lire):group1Descendant G2 d'un ou deux originaire-s de l'Outre-mer|l_immiNSP (ne pas lire):group1Descendant G2 d'un ou deux originaire-s de l'Outre-mer"
@@ -469,9 +470,9 @@ return(model)}
 ```
 
 ```{r, echo = FALSE}
-model_medge_nb <- reg0(indiv_mod_df$lib_medge_1km)
-model_gyn_nb <- reg0(indiv_mod_df$lib_gynéco_1km)
-model_sf_nb <- reg0(indiv_mod_df$lib_sf_1km)
+model_medge_nb <- reg0bis(indiv_mod_df$lib_medge_1km)
+model_gyn_nb <- reg0bis(indiv_mod_df$lib_gynéco_1km)
+model_sf_nb <- reg0bis(indiv_mod_df$lib_sf_1km)
 
 b <- list(geom_vline(xintercept = 0, color = 'black'))
 
@@ -492,20 +493,19 @@ mp + theme_minimal() +
 ### Avec le reste
 
 ```{r}
-reg1 <- function(var) {model <- lm_robust(var ~ origine_tous_g2_rec+ tuu2017+sexee+csnq_ego+agenq+iris_pct_imagh_afs+iris_pct_imasie+iris_pct_imeu+iris_pct_dip_bac, weights = poidsi_entier,data = indiv_mod)
+reg1 <- function(var) {model <- lm_robust(var ~ origine_tous_g2_rec+ tuu2017+sexee+csnq_ego+agenq+iris_pct_imagh_afs+iris_pct_imasie+iris_pct_imeu+iris_pct_dip_bac, weights = poidsi_entier,data = indiv_mod_df)
 return(model)}
 ```
 
 ```{r, echo = FALSE, fig.height=6, fig.width=10}
-model_medge <- reg0(indiv_mod_df$lib_dist_min_medge)
-model_medge_nb <- reg0(indiv_mod_df$lib_medge_1km)
-model_medge_apl <- reg0(indiv_mod_df$com_apl_mg)
-model_gyn <- reg0(indiv_mod_df$lib_dist_min_gynéco)
-model_gyn_nb <- reg0(indiv_mod_df$lib_gynéco_1km)
-model_gyn_apl <- reg0(indiv_mod_df$com_apl_gyn)
-model_sf <- reg0(indiv_mod_df$lib_dist_min_sf)
-model_sf_nb <- reg0(indiv_mod_df$lib_sf_1km)
-model_sf_apl <- reg0(indiv_mod_df$com_apl_sagf)
+model_medge_nb <- reg1(indiv_mod_df$lib_medge_1km)
+model_medge_apl <- reg1(indiv_mod_df$com_apl_mg)
+model_gyn <- reg1(indiv_mod_df$lib_dist_min_gynéco)
+model_gyn_nb <- reg1(indiv_mod_df$lib_gynéco_1km)
+model_gyn_apl <- reg1(indiv_mod_df$com_apl_gyn)
+model_sf <- reg1(indiv_mod_df$lib_dist_min_sf)
+model_sf_nb <- reg1(indiv_mod_df$lib_sf_1km)
+model_sf_apl <- reg1(indiv_mod_df$com_apl_sagf)
 
 b <- list(geom_vline(xintercept = 0, color = 'black'))
 
@@ -525,7 +525,7 @@ mp + theme_minimal() +
 ```
 
 ```{r, echo=FALSE, fig.height=6, fig.width=15}
-mp <- modelplot(list("Urgences" = model_urg, "Maternité" = model_mat, "Généraliste" = model_medge, "Généraliste (APL)"=model_medge_apl, "Gynécologue" = model_gyn, "Gynécologue (APL)" = model_gyn_apl, "Sage-femme" = model_sf, "Sage-femme (APL)" = model_sf_apl),
+mp <- modelplot(list("Généraliste (Nombre)"=model_medge_nb, "Gynécologue (Nombre)" = model_gyn_nb,  "Sage-femme (Nombre)" = model_sf_nb),
                 background = b, coef_omit = "Intercept|tuu2017\\w*|csnq_egoNSP, refus, incodable"
 )+facet_grid(~model)
 # +theme(legend.position = c(.8, .2))
@@ -542,21 +542,21 @@ mp + theme_minimal() +
 Sans tuu2017 :
 
 ```{r}
-reg1 <- function(var) {model <- lm_robust(var ~ iris_pct_act_atyp+ iris_pct_hlm+iris_pct_act_cadr+iris_tx_chompan+iris_pct_dip_bac+iris_pct_dip_prim+iris_pct_act_ouvr+iris_pct_proprio, weights = poidsi_entier,data = indiv_mod)
+reg1 <- function(var) {model <- lm_robust(var ~ iris_pct_act_atyp+ iris_pct_hlm+iris_pct_act_cadr+iris_tx_chompan+iris_pct_dip_bac+iris_pct_dip_prim+iris_pct_act_ouvr+iris_pct_proprio, weights = poidsi_entier,data = indiv_mod_df)
 return(model)}
 ```
 
 ```{r, echo = FALSE}
 
-model_medge <- reg0(indiv_mod_df$lib_dist_min_medge)
-model_medge_nb <- reg0(indiv_mod_df$lib_medge_1km)
-model_medge_apl <- reg0(indiv_mod_df$com_apl_mg)
-model_gyn <- reg0(indiv_mod_df$lib_dist_min_gynéco)
-model_gyn_nb <- reg0(indiv_mod_df$lib_gynéco_1km)
-model_gyn_apl <- reg0(indiv_mod_df$com_apl_gyn)
-model_sf <- reg0(indiv_mod_df$lib_dist_min_sf)
-model_sf_nb <- reg0(indiv_mod_df$lib_sf_1km)
-model_sf_apl <- reg0(indiv_mod_df$com_apl_sagf)
+model_medge <- reg1(indiv_mod_df$lib_dist_min_medge)
+model_medge_nb <- reg1(indiv_mod_df$lib_medge_1km)
+model_medge_apl <- reg1(indiv_mod_df$com_apl_mg)
+model_gyn <- reg1(indiv_mod_df$lib_dist_min_gynéco)
+model_gyn_nb <- reg1(indiv_mod_df$lib_gynéco_1km)
+model_gyn_apl <- reg1(indiv_mod_df$com_apl_gyn)
+model_sf <- reg1(indiv_mod_df$lib_dist_min_sf)
+model_sf_nb <- reg1(indiv_mod_df$lib_sf_1km)
+model_sf_apl <- reg1(indiv_mod_df$com_apl_sagf)
 
 b <- list(geom_vline(xintercept = 0, color = 'black'))
 
@@ -577,23 +577,24 @@ mp + theme_minimal() +
 Avec tuu2017 :
 
 ```{r}
-reg1 <- function(var) {model <- lm_robust(var ~ iris_pct_act_atyp+ iris_pct_hlm+iris_pct_act_cadr+iris_tx_chompan+iris_pct_dip_bac+iris_pct_dip_prim+iris_pct_act_ouvr+iris_pct_proprio+ tuu2017, weights = poidsi_entier,data = indiv_mod)
+reg1 <- function(var) {model <- lm_robust(var ~ iris_pct_act_atyp+ iris_pct_hlm+iris_pct_act_cadr+iris_tx_chompan+iris_pct_dip_bac+iris_pct_dip_prim+iris_pct_act_ouvr+iris_pct_proprio+ tuu2017, weights = poidsi_entier,data = indiv_mod_df)
 return(model)}
 ```
 
 ```{r, echo = FALSE}
-model_urg <- reg1(indiv_mod$dist_min_urg)
-model_mat <- reg1(indiv_mod$dist_min_mat)
-model_medge <- reg1(indiv_mod$lib_dist_min_medge)
-model_medge_apl <- reg1(indiv_mod$com_apl_mg)
-model_gyn <- reg1(indiv_mod$lib_dist_min_gynéco)
-model_gyn_apl <- reg1(indiv_mod$com_apl_gyn)
-model_sf <- reg1(indiv_mod$lib_dist_min_sf)
-model_sf_apl <- reg1(indiv_mod$com_apl_sagf)
+model_medge <- reg1(indiv_mod_df$lib_dist_min_medge)
+model_medge_nb <- reg1(indiv_mod_df$lib_medge_1km)
+model_medge_apl <- reg1(indiv_mod_df$com_apl_mg)
+model_gyn <- reg1(indiv_mod_df$lib_dist_min_gynéco)
+model_gyn_nb <- reg1(indiv_mod_df$lib_gynéco_1km)
+model_gyn_apl <- reg1(indiv_mod_df$com_apl_gyn)
+model_sf <- reg1(indiv_mod_df$lib_dist_min_sf)
+model_sf_nb <- reg1(indiv_mod_df$lib_sf_1km)
+model_sf_apl <- reg1(indiv_mod_df$com_apl_sagf)
 
 b <- list(geom_vline(xintercept = 0, color = 'black'))
 
-mp <- modelplot(list("Urgences" = model_urg, "Maternité" = model_mat, "Généraliste" = model_medge, "Généraliste (APL)"=model_medge_apl, "Gynécologue" = model_gyn, "Gynécologue (APL)" = model_gyn_apl, "Sage-femme" = model_sf, "Sage-femme (APL)" = model_sf_apl),
+mp <- modelplot(list("Généraliste (Nombre)"=model_medge_nb, "Gynécologue (Nombre)" = model_gyn_nb,  "Sage-femme (Nombre)" = model_sf_nb),
                 background = b, coef_omit = "Interc|tuu2017\\w*"
                 # coef_map = cm,
                 #coef_omit = "Interc|l_immiRefus (ne pas lire):group1Immigré (né étranger à l'étranger y compris réintégrés)|l_immiNSP (ne pas lire):group1Immigré (né étranger à l'étranger y compris réintégrés)|l_immiPresque tous sont d'origine immigrée:group1Originaire de l'Outre-mer|l_immiPlus de la moitié est d'origine immigrée:group1Originaire de l'Outre-mer|l_immiLa moitié est d'origine immigrée:group1Originaire de l'Outre-mer|l_immiMoins de la moitié est d'origine immigrée:group1Originaire de l'Outre-mer|l_immiRefus (ne pas lire):group1Originaire de l'Outre-mer|l_immiNSP (ne pas lire):group1Originaire de l'Outre-mer|l_immiPresque tous sont d'origine immigrée:group1Descendant G2 d'un ou deux immigré-s|l_immiPlus de la moitié est d'origine immigrée:group1Descendant G2 d'un ou deux immigré-s|l_immiLa moitié est d'origine immigrée:group1Descendant G2 d'un ou deux immigré-s|l_immiMoins de la moitié est d'origine immigrée:group1Descendant G2 d'un ou deux immigré-s|l_immiRefus (ne pas lire):group1Descendant G2 d'un ou deux immigré-s|l_immiNSP (ne pas lire):group1Descendant G2 d'un ou deux immigré-s|l_immiPresque tous sont d'origine immigrée:group1Descendant G2 d'un ou deux originaire-s de l'Outre-mer|l_immiPlus de la moitié est d'origine immigrée:group1Descendant G2 d'un ou deux originaire-s de l'Outre-mer|l_immiLa moitié est d'origine immigrée:group1Descendant G2 d'un ou deux originaire-s de l'Outre-mer|l_immiMoins de la moitié est d'origine immigrée:group1Descendant G2 d'un ou deux originaire-s de l'Outre-mer|l_immiRefus (ne pas lire):group1Descendant G2 d'un ou deux originaire-s de l'Outre-mer|l_immiNSP (ne pas lire):group1Descendant G2 d'un ou deux originaire-s de l'Outre-mer"

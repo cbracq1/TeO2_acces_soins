@@ -1,0 +1,84 @@
+---
+title: "origine_lien"
+author: "Clémence Bracq"
+date: "2024-04-04"
+output:
+  html_notebook: default
+  html_document:
+    df_print: paged
+  pdf_document: default
+editor_options:
+  markdown:
+    wrap: 72
+---
+
+
+
+
+```{r, echo=FALSE}
+ggsurvey(indiv_pd) +
+ aes(x = originegeo_rec, fill = a_rorig) +
+ geom_bar(position = "fill") +
+ scale_fill_hue(direction = 1) +
+ coord_flip() +
+ theme_minimal()
+```
+
+# Effet parmi immig
+
+```{r}
+indiv_immig<- indiv %>% filter(group1=="Immigré (né étranger à l'étranger y compris réintégrés)")#10396
+indiv_immig_pd <-svydesign(ids = indiv_immig$ident_fa, data = indiv_immig, weights = indiv_immig$poidsi)
+
+lprop(svytable(~s_medeciq_g+a_rorig, indiv_immig_pd))
+ggsurvey(indiv_immig_pd) +
+  aes(x = s_medeciq_g, fill = a_rorig) +
+  geom_bar(position = "fill") +
+  scale_fill_hue(direction = 1) +
+  coord_flip() +
+  theme_minimal()
+
+ggsurvey(indiv_immig_pd) +
+  aes(x = s_medeciq_a, fill = a_rorig) +
+  geom_bar(position = "fill") +
+  scale_fill_hue(direction = 1) +
+  coord_flip() +
+  theme_minimal()
+
+ggsurvey(indiv_immig_pd) +
+  aes(x = frott_ap_25, fill = a_rorig) +
+  geom_bar(position = "fill") +
+  scale_fill_hue(direction = 1) +
+  coord_flip() +
+  theme_minimal()
+```
+#Parmi chinois
+
+
+```{r, echo = FALSE}
+indiv_chine<- indiv %>% filter(originegeo_rec=="Chine")#594
+indiv_chine_pd <-svydesign(ids = indiv_chine$ident_fa, data = indiv_chine, weights = indiv_chine$poidsi)
+
+ggsurvey(indiv_chine_pd) +
+ aes(x = s_medeciq_g, fill = a_rorig) +
+ geom_bar(position = "fill") +
+ scale_fill_hue(direction = 1) +
+ coord_flip() +
+ theme_minimal()
+
+ggsurvey(indiv_chine_pd) +
+  aes(x = s_medeciq_a, fill = a_rorig) +
+  geom_bar(position = "fill") +
+  scale_fill_hue(direction = 1) +
+  coord_flip() +
+  theme_minimal()
+
+ggsurvey(indiv_chine_pd) +
+  aes(x = frott_ap_25, fill = a_rorig) +
+  geom_bar(position = "fill") +
+  scale_fill_hue(direction = 1) +
+  coord_flip() +
+  theme_minimal()
+
+
+```

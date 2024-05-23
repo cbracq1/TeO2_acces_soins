@@ -1,0 +1,226 @@
+---
+title: "Le frottis selon l'origine et la maternité"
+author: "Clémence Bracq"
+date: "2024-04-04"
+output:
+  html_notebook: default
+  html_document:
+    df_print: paged
+  pdf_document: default
+editor_options:
+  markdown:
+    wrap: 72
+---
+
+```{r, include = FALSE}
+enfants <- read_sas("X:/HAB-TEO2-exploitations/MàJ Insee avril 2023/enfants.sas7bdat",  catalog_file = "X:/HAB-TEO2-exploitations/MàJ Insee avril 2023/formats.sas7bcat")
+indiv_test <- indiv %>%  select(ident_fa, datenq, e_nbenf)
+  enfants <- to_factor(enfants) %>% select(ident_fa, e_jnaise, e_mnaise, e_anaise) %>% left_join(indiv_test, by = "ident_fa")
+  
+  # Convertir les dates en objets Date
+enfants$datenq <- as.Date(as.character(enfants$datenq), format = "%Y%m%d")
+enfants$date_naise <- as.Date(paste(enfants$e_anaise, enfants$e_mnaise, enfants$e_jnaise, sep = "-"))
+
+# Calculer la différence entre les deux dates en années
+enfants$delai <- as.numeric(difftime(enfants$datenq, enfants$date_naise, units = "days")) / 365.25
+
+# Créer l'indicateur pour savoir si les deux dates sont distantes de moins de 3 ans
+enfants$nais_3ans <- ifelse(enfants$delai < 3, 1, 0)
+
+enfants <- enfants %>% group_by(ident_fa) %>% mutate(nais_3ans_indiv = max(nais_3ans))
+enfants_3ans <- enfants %>% select(ident_fa, nais_3ans_indiv) %>% distinct()
+indiv_test<- indiv_test %>% 
+  left_join(enfants_3ans, by = "ident_fa") 
+indiv_test<- indiv_test %>% 
+  mutate(nais_3ans =case_when(nais_3ans_indiv==1~"Naissance dans les trois dernières années",
+                               nais_3ans_indiv==0~"Enfants mais pas de naissance\n dans les trois dernières années",
+                                   e_nbenf==0~"Pas d'enfants", 
+                                   TRUE ~ "Refus ou ne sait pas")) %>% 
+  select(nais_3ans, ident_fa)
+indiv <- indiv %>% 
+  left_join(indiv_test, by = "ident_fa")
+
+
+indiv_pd <-svydesign(ids = indiv$ident_fa, data = indiv, weights = indiv$poidsi)
+rm(enfants, enfants_3ans)
+gc()
+```
+
+
+```{r, include = FALSE}
+cprop(svytable(~frott_ap_25+nais_3ans, indiv_pd))
+```
+
+```{r, echo = FALSE}
+indiv$originegeo_rec <- indiv$originegeo %>%
+  fct_recode(
+    "DOM" = "13"
+  )
+indiv_graphe <- indiv %>%
+ filter(!is.na(frott_ap_25)) %>%
+ filter(!(nais_3ans %in% "Refus ou ne sait pas"))
+indiv_graphe$nais_3ans <-  fct_relevel(indiv_graphe$nais_3ans, "Naissance dans les trois dernières années", "Enfants mais pas de naissance\n dans les trois dernières années", "Pas d'enfants")
+
+indiv_graphe_pd <-svydesign(ids = indiv_graphe$ident_fa, data = indiv_graphe, weights = indiv_graphe$poidsi)
+
+
+
+ggsurvey(indiv_graphe_pd) +
+  aes(x = originegeo_rec, fill = frott_ap_25) +
+  geom_bar(position = "fill") +
+  scale_fill_hue(direction = 1) +
+  labs(
+    x = NULL,
+    y = "Proportion",
+    fill = "Dans les 3 dernières années..."
+  ) +
+  coord_flip() +
+  theme(legend.position = "bottom") +
+  theme_minimal()
+
+ggsurvey(indiv_graphe_pd) +
+  aes(x = nais_3ans, fill = frott_ap_25) +
+  geom_bar(position = "fill") +
+  scale_fill_hue(direction = 1) +
+  labs(
+    x = NULL,
+    y = "Proportion",
+    fill = "Dans les 3 dernières années..."
+  ) +
+  coord_flip() +
+  theme(legend.position = "bottom") +
+  theme_minimal()
+
+ # ggsurvey(indiv_graphe_pd) +
+ #  aes(x = nais_3ans, fill = frott_ap_25) +
+ #  geom_bar(position = "fill") +
+ #  scale_fill_hue(direction = 1) +
+ #  labs(
+ #    x = NULL,
+ #    y = "Proportion",
+ #    fill = "Dans les 3 dernières années..."
+ #  ) +
+ #  coord_flip() +
+ #  facet_wrap(vars(group1))+
+ #  theme(legend.position = "bottom") +
+ #  theme_minimal()
+```
+
+### Stats desc pour celles qui ont pas eu d'enfants
+
+```{r}
+table(indiv$nais_3ans)# on en a 9000
+```
+
+```{r, include = FALSE}
+indiv_pasenfant <- indiv_graphe %>% filter(nais_3ans == "Pas d'enfants")
+indiv_pasenfant_pd <-svydesign(ids = indiv_pasenfant$ident_fa, data = indiv_pasenfant, weights = indiv_pasenfant$poidsi)
+```
+
+```{r, echo = FALSE}
+ggsurvey(indiv_pasenfant_pd) +
+  aes(x = originegeo_rec, fill = frott_ap_25) +
+  geom_bar(position = "fill") +
+  scale_fill_hue(direction = 1) +
+  labs(
+    x = NULL,
+    y = "Proportion",
+    fill = "Dans les 3 dernières années...",
+    subtitle = "Champ : Femmes de plus de 25 ans n'ayant pas eu d'enfants"
+  ) +
+  coord_flip() +
+  theme(legend.position = "bottom") +
+  theme_minimal()
+```
+
+### Celles qui en ont eu il y a plus de 3 ans
+
+```{r, include = FALSE}
+indiv_2 <- indiv_graphe %>% filter(nais_3ans == "Enfants mais pas de naissance\n dans les trois dernières années")
+indiv2_pd <-svydesign(ids = indiv_2$ident_fa, data = indiv_2, weights = indiv_2$poidsi)
+```
+
+```{r, echo = FALSE}
+ggsurvey(indiv2_pd) +
+  aes(x = originegeo_rec, fill = frott_ap_25) +
+  geom_bar(position = "fill") +
+  scale_fill_hue(direction = 1) +
+  labs(
+    x = NULL,
+    y = "Proportion",
+    fill = "Dans les 3 dernières années...",
+    subtitle = "Champ : Femmes de plus de 25 ans ayant \neu des enfants tous il y a plus de 3 ans"
+  ) +
+  coord_flip() +
+  theme(legend.position = "bottom") +
+  theme_minimal()
+```
+
+### Celles qui en ont eu dans les 3 ans
+Origine :
+```{r, echo = FALSE}
+indiv_3 <- indiv_graphe %>% filter(nais_3ans == "Naissance dans les trois dernières années")
+table(indiv_3$originegeo_rec)
+indiv_3$originegeo_rec_rec <- indiv_3$originegeo_rec %>%
+  fct_recode(
+    "France métropolitaine ou DOM" = "France métropolitaine",
+    "France métropolitaine ou DOM" = "DOM",
+    "Algérie, Maroc, Tunisie, Turquie ou Moyen-Orient" = "Algérie",
+    "Algérie, Maroc, Tunisie, Turquie ou Moyen-Orient" = "Maroc ou Tunisie",
+    "Autres pays d'Afrique" = "Afrique sahélienne",
+    "Autres pays d'Afrique" = "Afrique guinéenne ou centrale",
+    "Asie du Sud-Est, Chine ou autres pays d'Asie" = "Asie du Sud-Est",
+    "Algérie, Maroc, Tunisie, Turquie ou Moyen-Orient" = "Turquie ou Moyen-Orient",
+    "Asie du Sud-Est, Chine ou autres pays d'Asie" = "Chine",
+    "Asie du Sud-Est, Chine ou autres pays d'Asie" = "Autres pays d'Asie",
+    "Europe" = "Portugal",
+    "Europe" = "Espagne ou talie",
+    "Europe" = "Autres pays de l'UE27",
+    "Europe" = "Autres pays d'Europe",
+    "Europe" = "Autre pays"
+  )
+table(indiv_3$originegeo_rec_rec)
+indiv_3_pd <-svydesign(ids = indiv_3$ident_fa, data = indiv_3, weights = indiv_3$poidsi)
+
+```
+
+Ici on regroupe davantage les origine pour éviter d'avoir des effectifs trop faibles
+
+```{r, echo =FALSE}
+ggsurvey(indiv_3_pd) +
+  aes(x = originegeo_rec_rec, fill = frott_ap_25) +
+  geom_bar(position = "fill") +
+  scale_fill_hue(direction = 1) +
+  labs(
+    x = NULL,
+    y = "Proportion",
+    fill = "Dans les 3 dernières années...",
+    subtitle = "Champ : Femmes de plus de 25 ans ayant eu un enfant dans les trois dernières années"
+  ) +
+  coord_flip() +
+  theme(legend.position = "bottom") +
+  theme_minimal()
+```
+
+### Sur seulement les chinoises
+
+```{r, include = FALSE}
+indiv_4 <- indiv_graphe %>% filter(originegeo_rec == "Chine")# 347 femmes
+indiv4_pd <-svydesign(ids = indiv_4$ident_fa, data = indiv_4, weights = indiv_4$poidsi)
+
+```
+
+```{r, echo =FALSE}
+ggsurvey(indiv4_pd) +
+  aes(x = nais_3ans, fill = frott_ap_25) +
+  geom_bar(position = "fill") +
+  scale_fill_hue(direction = 1) +
+  labs(
+    x = NULL,
+    y = "Proportion",
+    fill = "Dans les 3 dernières années..."
+  ) +
+  coord_flip() +
+  theme(legend.position = "bottom") +
+  theme_minimal()
+```

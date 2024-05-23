@@ -164,8 +164,8 @@ indiv_dist$durtotfrm_cat <- indiv_dist$durtotfrm_cat %>%
     "Entre 10 et 59 ans" = "(10,59]"
   )
 indiv_dist <- indiv_dist %>% 
-  mutate(dureeorigine = case_when(group1 == "Immigré (né étranger à l'étranger y compris réintégrés)" ~ interaction(origine_tous_g2_rec, durtotfrm_cat),
-                                  TRUE ~ origine_tous_g2_rec))
+  mutate(dureeorigine = case_when(group1 == "Immigré (né étranger à l'étranger y compris réintégrés)" ~ interaction(origine_tous_g2, durtotfrm_cat),
+                                  TRUE ~ origine_tous_g2))
 
 # a reprendre selon unité et distrib
                               
@@ -185,8 +185,8 @@ indiv_dist <- indiv_dist %>%
 
 ```{r select, include=FALSE}
 # Selection var
-acm <- indiv_dist %>% select(s_medeciq_a, s_medeciq_b, s_medeciq_c, s_medeciq_e, s_medeciq_f, s_etat_rec, s_medeciq_g, s_ren_queren_spe, s_ren_queren_gen, s_ren_queren_dent, s_ren_queren_medoc, s_ren_queren_lun, s_ren_queren_analyses, s_ren_queren_imagerie,  s_rec_ren_gen, s_rec_ren_spe, s_renonc_acm, s_medeciq_acm, s_ren_pqren_cout, s_ren_pqren_attente, s_ren_pqren_qui, s_ren_pqren_papier, s_ren_pqren_peur, s_ren_pqren_tps_loin,l_immi, group1, origine_tous_g2, sexee, csnq_ego, s_secuq, s_secuq_refus, dureeorigine,  s_traite, s_traite_peau,  s_maladi, s_limite, s_medeciq_d, frott_ap_25, agenq, durtotfrm, imc,ident_fa, poidsi) %>% data.frame() %>% 
-  filter(!is.na(s_medeciq_a)&!is.na(s_medeciq_b)&!is.na(s_medeciq_c)&!is.na(s_medeciq_e)&!is.na(s_medeciq_f))
+acm <- indiv_dist %>% select(s_medeciq_a, s_medeciq_b, s_medeciq_c, s_medeciq_e, s_medeciq_f, s_etat_rec, s_renonc, s_maladi, s_limite, s_medeciq_g, s_ren_queren_spe, s_ren_queren_gen, s_ren_queren_dent, s_ren_queren_medoc, s_ren_queren_lun, s_ren_queren_analyses, s_ren_queren_imagerie,  s_rec_ren_gen, s_rec_ren_spe, s_renonc_acm, s_medeciq_acm, s_ren_pqren_cout, s_ren_pqren_attente, s_ren_pqren_qui, s_ren_pqren_papier, s_ren_pqren_peur, s_ren_pqren_tps_loin,l_immi, group1, origine_tous_g2, sexee, csnq_ego, s_secuq, s_secuq_refus, dureeorigine,  s_traite, s_traite_peau,  s_medeciq_d, frott_ap_25, agenq, durtotfrm, imc,ident_fa, poidsi) %>% data.frame() %>% 
+  filter(!is.na(s_medeciq_a)&!is.na(s_medeciq_b)&!is.na(s_medeciq_c)&!is.na(s_medeciq_e)&!is.na(s_medeciq_f)&!is.na(s_etat_rec)&s_renonc!="NSP (ne pas lire)"&s_renonc!="Refus (ne pas lire)")
 
 #, matches("^iris_pct_im\\w*$"), matches("^dist_min\\w*$"), matches("^com_apl_\\w*$"),  matches("^lib_dist_min\\w*$")
 rownames(acm) <- paste(acm$ident_fa)
@@ -200,11 +200,11 @@ rownames(acm) <- paste(acm$ident_fa)
 acm_poids <- acm %>% select(-ident_fa) 
 # %>% na.omit()
 acm <- acm_poids %>% select(-poidsi)
-
+acm$durtotfrm<- as.numeric(acm$durtotfrm)
 ```
 
 ```{r}
-acm_frott <- indiv_dist %>% select(frott_ap_25, s_medeciq_d, s_medeciq_a, s_medeciq_b, s_medeciq_c, s_medeciq_e, s_medeciq_f, s_etat_rec,  s_medeciq_g, s_rec_ren_gen, s_rec_ren_spe, s_ren_pqren_cout, s_ren_pqren_attente, s_ren_pqren_qui, s_ren_pqren_papier, s_ren_pqren_peur, s_ren_pqren_tps_loin, s_ren_queren_dent, s_ren_queren_medoc, s_ren_queren_lun, s_ren_queren_analyses, s_ren_queren_imagerie,  l_immi, group1, origine_tous_g2,  csnq_ego, s_secuq, s_secuq_refus, dureeorigine,  s_traite, s_traite_peau,  s_maladi, s_limite, agenq, durtotfrm, imc, ident_fa, poidsi) %>% data.frame() %>% #, matches("^iris_pct_im\\w*$"), matches("^dist_min\\w*$"), matches("^com_apl_\\w*$"),  matches("^lib_dist_min\\w*$")
+acm_frott <- indiv_dist %>% select(frott_ap_25, s_medeciq_d, s_medeciq_a,  s_medeciq_f, s_etat_rec, s_medeciq_b, s_medeciq_c, s_medeciq_e,s_maladi, s_limite, s_medeciq_g, s_rec_ren_gen, s_rec_ren_spe, s_ren_pqren_cout, s_ren_pqren_attente, s_ren_pqren_qui, s_ren_pqren_papier, s_ren_pqren_peur, s_ren_pqren_tps_loin, s_ren_queren_dent, s_ren_queren_medoc, s_ren_queren_lun, s_ren_queren_analyses, s_ren_queren_imagerie,  l_immi, group1, origine_tous_g2,  csnq_ego, s_secuq, s_secuq_refus, dureeorigine,  s_traite, s_traite_peau,  agenq, durtotfrm, imc, ident_fa, poidsi) %>% data.frame() %>% #, matches("^iris_pct_im\\w*$"), matches("^dist_min\\w*$"), matches("^com_apl_\\w*$"),  matches("^lib_dist_min\\w*$")
   filter(!is.na(frott_ap_25)&!is.na(s_medeciq_d)&!is.na(s_medeciq_a)&!is.na(s_medeciq_b)&!is.na(s_medeciq_c)&!is.na(s_medeciq_e)&!is.na(s_medeciq_f))
 rownames(acm_frott) <- paste(acm_frott$ident_fa)
 # acm_frott$s_renonc <- acm_frott$s_renonc %>%
@@ -217,6 +217,8 @@ rownames(acm_frott) <- paste(acm_frott$ident_fa)
 acm_frott_poids <- acm_frott %>% select(-ident_fa) 
 # %>% na.omit()
 acm_frott <- acm_frott_poids %>% select(-poidsi)
+acm_frott$durtotfrm<- as.numeric(acm_frott$durtotfrm)
+
 ```
 
 
@@ -225,17 +227,31 @@ acm_frott <- acm_frott_poids %>% select(-poidsi)
 # ACM 1
 
 ```{r}
-res <- MCA(acm, quali.sup = 7:38, quanti.sup = 39:41, row.w = acm_poids$poidsi)
+res <- MCA(acm, quali.sup = 8:39, quanti.sup = 40:42, row.w = acm_poids$poidsi)
 ```
 
 ```{r}
 explor(res)
 ```
 
+```{r}
+res_explor <- explor::prepare_results(res)
+explor::MCA_ind_plot(res_explor, xax = 1, yax = 2, ind_sup = FALSE, lab_var = NULL,
+    ind_lab_min_contrib = 0, col_var = NULL, labels_size = 9, point_opacity = 0.5,
+    opacity_var = NULL, point_size = 64, ellipses = FALSE, transitions = TRUE,
+    labels_positions = NULL)
+```
 
 ```{r}
-res <- explor::prepare_results(res)
-explor::MCA_var_plot(res, xax = 1, yax = 2, var_sup = TRUE, var_sup_choice = c("s_medeciq_g",
+explor::MCA_biplot(res_explor, xax = 1, yax = 2, col_var = "Variable", ind_point_size = 32,
+    ind_opacity = 0.5, ind_opacity_var = NULL, ind_labels = FALSE, var_point_size = 96,
+    var_sup = FALSE, ind_sup = FALSE, labels_size = 12, 
+    symbol_var = "Nature", transitions = TRUE, labels_positions = NULL, xlim = c(-2.23,
+        2.82), ylim = c(-1.29, 3.76))
+```
+
+```{r}
+explor::MCA_var_plot(res_explor, xax = 1, yax = 2, var_sup = TRUE, var_sup_choice = c("s_medeciq_g",
     "s_etat_rec", "sexee", "s_traite_peau"), var_lab_min_contrib = 0, col_var = "Variable",
     symbol_var = "Type", size_var = NULL, size_range = c(10, 300), labels_size = 10,
     point_size = 43, transitions = TRUE, labels_positions = "auto", labels_prepend_var = FALSE,
@@ -246,22 +262,67 @@ explor::MCA_var_plot(res, xax = 1, yax = 2, var_sup = TRUE, var_sup_choice = c("
 Factoshiny(res)
 ```
 
-### ACM2 
-```{r}
-res <- MCA(acm_frott, quali.sup = c(8:33), quanti.sup = c(34:35), row.w = acm_frott_poids$poidsi)
+
+### Seulement sur immigrés
+```{r select, include=FALSE}
+# Selection var
+acm_immig <- indiv_dist %>% select(s_medeciq_a, s_medeciq_b, s_medeciq_c, s_medeciq_e, s_medeciq_f, s_etat_rec, s_renonc, s_maladi, s_limite, s_medeciq_g, s_ren_queren_spe, s_ren_queren_gen, s_ren_queren_dent, s_ren_queren_medoc, s_ren_queren_lun, s_ren_queren_analyses, s_ren_queren_imagerie,  s_rec_ren_gen, s_rec_ren_spe, s_renonc_acm, s_medeciq_acm, s_ren_pqren_cout, s_ren_pqren_attente, s_ren_pqren_qui, s_ren_pqren_papier, s_ren_pqren_peur, s_ren_pqren_tps_loin,l_immi, group1, origine_tous_g2, sexee, csnq_ego, s_secuq, s_secuq_refus, dureeorigine,  s_traite, s_traite_peau,  originegeo, s_medeciq_d, frott_ap_25, agenq, durtotfrm, imc,ident_fa, poidsi) %>% data.frame() %>% 
+  filter(!is.na(s_medeciq_a)&!is.na(s_medeciq_b)&!is.na(s_medeciq_c)&!is.na(s_medeciq_e)&!is.na(s_medeciq_f)&!is.na(s_etat_rec)&s_renonc!="NSP (ne pas lire)"&s_renonc!="Refus (ne pas lire)"&group1=="Immigré (né étranger à l'étranger y compris réintégrés)")
+
+#, matches("^iris_pct_im\\w*$"), matches("^dist_min\\w*$"), matches("^com_apl_\\w*$"),  matches("^lib_dist_min\\w*$")
+rownames(acm_immig) <- paste(acm_immig$ident_fa)
+# acm$s_renonc <- acm$s_renonc %>%
+#   fct_recode(
+#     "A renoncé à des soins" = "Oui",
+#     "N'a pas renoncé à des soins" = "Non",
+#     NULL = "Refus (ne pas lire)",
+#     NULL = "NSP (ne pas lire)"
+#   )
+acm_immig_poids <- acm_immig %>% select(-ident_fa, -group1) 
+# %>% na.omit()
+acm_immig <- acm_immig_poids %>% select(-poidsi)
+acm_immig$durtotfrm<- as.numeric(acm_immig$durtotfrm)
 ```
 
 
 ```{r}
-res <- explor::prepare_results(res)
-explor::MCA_var_plot(res, xax = 1, yax = 2, var_sup = TRUE, var_sup_choice = "s_etat_rec",
+res <- MCA(acm_immig, quali.sup = 8:39, quanti.sup = 40:42, row.w = acm_immig_poids$poidsi)
+
+```
+
+```{r}
+res_explor <- explor::prepare_results(res)
+
+explor::MCA_biplot(res_explor, xax = 1, yax = 2, col_var = "Variable", ind_point_size = 32,
+    ind_opacity = 0.5, ind_opacity_var = NULL, ind_labels = FALSE, var_point_size = 96,
+    var_sup = FALSE, ind_sup = FALSE, labels_size = 12, 
+    symbol_var = "Nature", transitions = TRUE, labels_positions = NULL, xlim = c(-2.23,
+        2.82), ylim = c(-1.29, 3.76))
+```
+
+## ACM2 
+```{r}
+res <- MCA(acm_frott, quali.sup = 5:33, quanti.sup = 34:36, row.w = acm_frott_poids$poidsi)
+```
+
+
+```{r}
+res_explor <- explor::prepare_results(res)
+explor::MCA_var_plot(res_explor, xax = 1, yax = 2, var_sup = TRUE, 
     var_lab_min_contrib = 0, col_var = "Variable", symbol_var = "Type", size_var = NULL,
     size_range = c(10, 300), labels_size = 10, point_size = 56, transitions = TRUE,
     labels_positions = NULL, labels_prepend_var = FALSE, xlim = c(-1.82, 2.45),
     ylim = c(-1.91, 2.36))
 ```
 
+```{r}
 
+explor::MCA_biplot(res_explor, xax = 1, yax = 2, col_var = "Variable", ind_point_size = 32,
+    ind_opacity = 0.5, ind_opacity_var = NULL, ind_labels = FALSE, var_point_size = 96,
+    var_sup = FALSE, ind_sup = FALSE, labels_size = 12, 
+    symbol_var = "Nature", transitions = TRUE, labels_positions = NULL, xlim = c(-2.23,
+        2.82), ylim = c(-1.29, 3.76))
+```
 ### avec termes d'interaction
 
 ```{r}

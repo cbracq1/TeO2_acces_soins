@@ -1,0 +1,293 @@
+---
+title: "Renoncement"
+author: "Clémence Bracq"
+date: "2024-04-15"
+output:
+  html_notebook: default
+  html_document:
+    df_print: paged
+  pdf_document: default
+editor_options:
+  markdown:
+    wrap: 72
+---
+
+# Critique argumentée de la variable de renoncement
+
+
+## Variable globale : très biaisée
+
+Montrer que toutes les catégories les favorisées "renoncent" plus (en termes de CSP, d'irrégularité, de couverture sociale) et en comparant la corrélation avec ses variables à la corrélation au recours.
+
+```{r}
+library(GGally)
+
+indiv$s_renonc_rec <- indiv$s_renonc %>%
+  fct_recode(
+    NULL = "Refus (ne pas lire)",
+    NULL = "NSP (ne pas lire)"
+  )
+indiv_pd <-svydesign(ids = indiv$ident_fa, data = indiv, weights = indiv$poidsi)
+
+indiv_test <- indiv %>% filter(!is.na(s_renonc_rec))
+
+ggtable(cardinality_threshold = 16,  indiv_test, 
+  columnsX = "s_renonc", 
+  columnsY = c("s_traite", "s_etat_rec", "s_medeciq_a", "s_medeciq_f", "s_medeciq_g", "s_medeciq_nbval"),  mapping = aes(weight = poidsi),
+  cells = "col.prop",
+  fill = "resid", legend = 1) +
+  labs(fill = "Résidus standardisés du Chi²") +
+  theme(legend.position = "bottom")
+```
+
+```{r}
+library(ggplot2)
+library(reshape2)
+
+cross_table <- svytable(~s_renonc_rec + s_traite_rec, indiv_pd)
+
+# Test exact de Fisher
+fisher_test <- fisher.test(cross_table)
+
+# Transformer le tableau en format long pour ggplot2
+cross_table_long <- melt(cross_table)
+
+# Création du graphique avec ggplot2
+ggplot(cross_table_long, aes(x = Var1, y = Var2, fill = value)) +
+  geom_tile(color = "white") +
+  geom_text(aes(label = sprintf("%d\n(p=%.3f)", value, fisher_test$p.value)), size = 3) +
+  scale_fill_gradient(low = "white", high = "steelblue") +
+  theme_minimal() +
+  labs(x = "Variable 1", y = "Variable 2", title = "Tableau Croisé avec Test Exact de Fisher")
+```
+
+
+```{r}
+indiv$s_renonc_rec <- indiv$s_renonc %>%
+  fct_recode(
+    "Refus ou ne sait pas" = "Refus (ne pas lire)",
+    "Refus ou ne sait pas" = "NSP (ne pas lire)"
+  )
+
+indiv$s_traite_rec <- indiv$s_traite %>%
+  fct_recode(
+    "Refus ou ne sait pas" = "Refus (ne pas lire)",
+    "Refus ou ne sait pas" = "NSP (ne pas lire)",
+  )
+indiv_pd <-svydesign(ids = indiv$ident_fa, data = indiv, weights = indiv$poidsi)
+
+tb <- cprop(svytable(~ s_traite_rec + s_renonc_rec, indiv_pd))
+tb
+# xtable(tb, digits = 1)
+tb <- cprop(svytable(~ s_etat_rec + s_renonc_rec, indiv_pd))
+
+
+```
+
+
+Echec : pas corrélé négativement avec classe, secu, irreg... Corrélé + avec aller voir généraliste ou autre spé mais pas avec les autres
+
+Mais résultat moindre renoncement immigré robuste sur toutes les origines
+```{r}
+ggsurvey(indiv_pd) +
+ aes(x = originegeo_rec, fill = s_renonc_rec) +
+ geom_bar(position = "fill") +
+ scale_fill_hue(direction = 1) +
+  labs(
+    x = "Origine",
+    y = "Proportion",
+    fill = "A renoncé à des soins dans les 12 derniers mois"
+  ) +
+ coord_flip() +
+  theme(legend.position = "bottom") + geom_hline(yintercept = 0.86, linetype = "dashed", color = "black")
+```
+
+Lien renoncement discriminations?
+
+
+```{r}
+indiv_bdd <- indiv_bdd %>% 
+  mutate(s_discri_orig = case_when(s_compor_c_corrig == "Modalité citée" | s_compor_d_corrig == "Modalité citée" | s_compor_e_corrig == "Modalité citée"~"Discri par origine", 
+                                   s_traite == "Non" ~"Pas discri",
+                                   TRUE~"Autre discri"))
+indiv_bdd$s_traite_rec <- indiv_bdd$s_traite %>%
+  fct_recode(
+    NULL = "Sans objet",
+    NULL = "Refus (ne pas lire)",
+    NULL = "NSP (ne pas lire)"
+  )
+
+
+indiv_test <- indiv_bdd %>% filter(!is.na(s_renonc_rec))%>% filter(!is.na(s_traite_rec))
+indiv_test$s_etat_rec <- relevel(indiv_test$s_etat_rec, ref = 'Bon ou très bon')
+
+
+indiv_test_pd <-svydesign(ids = indiv_test$ident_fa, data = indiv_test, weights = indiv_test$poidsi)
+
+cprop(svytable(~s_renonc_rec+s_traite_rec, indiv_test_pd))
+cprop(svytable(~group1+s_traite_rec, indiv_test_pd))
+cprop(svytable(~group1+s_discri_orig, indiv_test_pd))
+
+
+ggsurvey(indiv_test_pd) +
+  aes(x = s_renonc_rec, fill = s_traite_rec) +
+  geom_bar(position = "fill") +
+  scale_fill_hue(direction = 1) +
+  labs(
+    x = NULL,
+    y = "Proportion",
+    fill = "Discrimination par professionnel de santé",
+  ) +
+  coord_flip() +
+  theme(legend.position = "bottom") +
+  theme_minimal()
+
+ggsurvey(indiv_test_pd) +
+  aes(x = s_renonc_rec, fill = s_discri_orig) +
+  geom_bar(position = "fill") +
+  scale_fill_hue(direction = 1) +
+  labs(
+    x = NULL,
+    y = "Proportion",
+    fill = "Discrimination par professionnel de santé",
+  ) +
+  coord_flip() +
+  theme(legend.position = "bottom") +
+  theme_minimal()
+
+ggsurvey(indiv_test_pd) +
+  aes(x = s_renonc_rec, fill = s_discri_orig) +
+  geom_bar(position = "fill") +
+  scale_fill_hue(direction = 1) +
+  labs(
+    x = NULL,
+    y = "Proportion",
+    fill = "Discrimination par professionnel de santé",
+  ) +
+  coord_flip() +
+  theme(legend.position = "bottom") +
+  theme_minimal()
+```
+
+```{r}
+indiv_test$s_renonc_rec <- relevel(indiv_test$s_renonc_rec, ref = "N'a pas renoncé à des soins dans les 12 derniers mois")
+indiv_test$s_traite_rec <- relevel(as.factor(indiv_test$s_traite_rec), ref = 'Non')
+indiv_test$group1 <- relevel(indiv_test$group1, ref = "Population non immigrée ni originaire d'Outre-mer et descendant de deux parents non immigrés et non originaires d'Outre-mer")
+indiv_test$s_medeciq_g_rec <- indiv_test$s_medeciq_g %>%
+  fct_recode(
+    NULL = "-1",
+    NULL = "-2"
+  )
+indiv_test$s_medeciq_g_rec <- relevel(as.factor(indiv_test$s_medeciq_g_rec), ref = "Modalité non citée")
+indiv_test$s_traite_rec <- relevel(as.factor(indiv_test$s_traite_rec), ref = "Non")
+
+
+indiv_test_pd <-svydesign(ids = indiv_test$ident_fa, data = indiv_test, weights = indiv_test$poidsi)
+
+model <- svyglm(as.factor(s_renonc_rec) ~ as.factor(s_traite_rec) +as.factor(originegeo_rec)
+             , family = quasibinomial,
+  design = indiv_test_pd)
+library(ggstats)
+
+model1 <- svyglm(as.factor(s_renonc_rec) ~ as.factor(originegeo_rec)
+             , family = quasibinomial,
+  design = indiv_test_pd)
+
+model2 <- svyglm(as.factor(s_renonc_rec) ~ as.factor(originegeo_rec)+as.factor(s_traite_rec)
+             , family = quasibinomial,
+  design = indiv_test_pd)
+model3 <- svyglm(as.factor(s_renonc_rec) ~ as.factor(originegeo_rec)*as.factor(s_traite_rec)
+             , family = quasibinomial,
+  design = indiv_test_pd)
+model4 <- svyglm(as.factor(s_renonc_rec) ~ as.factor(group1)
+             , family = quasibinomial,
+  design = indiv_test_pd)
+
+model5 <- svyglm(as.factor(s_renonc_rec) ~ as.factor(group1)+as.factor(s_traite_rec)
+             , family = quasibinomial,
+  design = indiv_test_pd)
+model6 <- svyglm(as.factor(s_renonc_rec) ~ as.factor(group1)*as.factor(s_traite_rec)
+             , family = quasibinomial,
+  design = indiv_test_pd)
+
+model7 <- svyglm(as.factor(s_renonc_rec) ~ as.factor(s_medeciq_g_rec)
+             , family = quasibinomial,
+  design = indiv_test_pd)
+ggstats::ggcoef_model(model3, exponentiate = TRUE)
+
+
+ggstats::ggcoef_compare(list(model1, model, model2, model3, model4, model5, model6, model7), type = "faceted", exponentiate = TRUE, variable_labels = c("as.factor(originegeo_rec)" = "Origine", "as.factor(group1)"="Migration"))
+
+```
+
+```{r}
+
+model <- svyglm(as.factor(s_renonc_rec) ~ as.factor(s_traite_rec)
+                 , family = quasibinomial,
+                 design = indiv_test_pd)
+gtsummary::tbl_regression(model, exponentiate = TRUE,label=c("as.factor(s_traite_rec)"="Discrimination par un professionnel de santé"))
+
+```
+
+
+```{r}
+
+model <- svyglm(as.factor(s_renonc_rec) ~ as.factor(s_etat_rec)
+                 , family = quasibinomial,
+                 design = indiv_test_pd)
+gtsummary::tbl_regression(model, exponentiate = TRUE, label=c("as.factor(s_etat_rec)"="Etat de santé perçu"))
+
+```
+
+```{r}
+model <- svyglm(as.factor(s_renonc_rec) ~ as.factor(s_medeciq_g_rec)
+                 , family = quasibinomial,
+                 design = indiv_test_pd)
+gtsummary::tbl_regression(model, exponentiate = TRUE, label=c("as.factor(s_medeciq_g_rec)"="Pas de recours à un professionnel cité dans les 12 derniers mois"))
+```
+
+
+```{r}
+model <- svyglm(as.factor(s_renonc_rec) ~ s_etat_rec*s_medeciq_g_rec
+                 , family = quasibinomial,
+                 design = indiv_test_pd)
+gtsummary::tbl_regression(model, exponentiate = TRUE)
+```
+
+
+```{r}
+
+indiv_test$s_traite_rec <- indiv_test$s_traite_rec %>%
+  fct_recode(
+    NULL = "Refus ou ne sait pas",
+  )
+
+indiv_test$s_etat_rec <- indiv_test$s_etat_rec %>%
+  fct_recode(
+    NULL = "Refus ou ne sait pas",
+    "Bon ou moyen" = "Bon",
+    "Bon ou moyen" = "Moyen",
+    "Mauvais ou  très mauvais" = "Mauvais",
+    "Mauvais ou  très mauvais" = "Très mauvais"
+  )
+indiv_test_pd <-svydesign(ids = indiv_test$ident_fa, data = indiv_test, weights = indiv_test$poidsi)
+
+model <- svyglm(as.factor(s_renonc_rec) ~ s_traite_rec#+l_immi
+                +s_etat_rec+s_etat_rec*s_medeciq_g_rec+s_medeciq_a+s_medeciq_b+s_medeciq_c+s_medeciq_e+ s_medeciq_f#+iris_pct_immi 
+             , family = quasibinomial,
+  design = indiv_test_pd)
+ggstats::ggcoef_model(model, exponentiate = TRUE, variable_labels = c("as.numeric(s_medeciq_nbval)" = "Nombre de type de professionnels de santé consultés au cours des 12 derniers mois", "s_medeciq_g_rec" = "Pas de consultation de professionnels de santé dans les 12 derniers mois", "s_traite_rec"="Discrimination par un professionnel de santé", "s_etat_rec" = "Etat de santé perçu", "s_etat_rec:s_medeciq_g_rec" = "Etat de santé perçu et pas de consultations"))
+```
+
+
+On a 2.5 fois plus de chances de renoncer à des soins lorsqu'on a subi des discriminations.
+
+## Spécifications : effectifs trop faibles
+
+Quand on prend que les renoncés on garde 12% de la base et seulement 1133 immigrés dont par exemple 56 chinois ou 28 espagnols ou italiens.
+
+## En rester au généraliste?
+
+Dans un troisième temps regarder que généraliste, seul truc vraiment interprétable
+
+

@@ -1,0 +1,635 @@
+---
+title: "Frottis"
+author: "Clémence Bracq"
+date: "2024-03-25"
+output:
+  html_notebook: default
+  html_document:
+    df_print: paged
+  pdf_document: default
+editor_options:
+  markdown:
+    wrap: 72
+---
+
+
+```{r setup, include=FALSE} 
+knitr::opts_chunk$set(echo = TRUE, warning = FALSE, message = FALSE) 
+```
+
+```{r, include = FALSE}
+enfants <- read_sas("X:/HAB-TEO2-exploitations/MàJ Insee avril 2023/enfants.sas7bdat",  catalog_file = "X:/HAB-TEO2-exploitations/MàJ Insee avril 2023/formats.sas7bcat")
+indiv_test <- indiv_dist %>%  select(ident_fa, datenq, e_nbenf)
+  enfants <- to_factor(enfants) %>% select(ident_fa, e_jnaise, e_mnaise, e_anaise) %>% left_join(indiv_test, by = "ident_fa")
+  
+  # Convertir les dates en objets Date
+enfants$datenq <- as.Date(as.character(enfants$datenq), format = "%Y%m%d")
+enfants$date_naise <- as.Date(paste(enfants$e_anaise, enfants$e_mnaise, enfants$e_jnaise, sep = "-"))
+
+# Calculer la différence entre les deux dates en années
+enfants$delai <- as.numeric(difftime(enfants$datenq, enfants$date_naise, units = "days")) / 365.25
+
+# Créer l'indicateur pour savoir si les deux dates sont distantes de moins de 3 ans
+enfants$nais_3ans <- ifelse(enfants$delai < 3, 1, 0)
+
+enfants <- enfants %>% group_by(ident_fa) %>% mutate(nais_3ans_indiv = max(nais_3ans))
+enfants_3ans <- enfants %>% select(ident_fa, nais_3ans_indiv) %>% distinct()
+indiv_test<- indiv_test %>% 
+  left_join(enfants_3ans, by = "ident_fa") 
+indiv_test<- indiv_test %>% 
+  mutate(nais_3ans =case_when(nais_3ans_indiv==1~"Naissance dans les trois dernières années",
+                               nais_3ans_indiv==0~"Enfants mais pas de naissance\n dans les trois dernières années",
+                                   e_nbenf==0~"Pas d'enfants", 
+                                   TRUE ~ "Refus ou ne sait pas")) %>% 
+  select(nais_3ans, ident_fa)
+indiv_dist <- indiv_dist %>% 
+  left_join(indiv_test, by = "ident_fa")
+
+rm(enfants, enfants_3ans)
+gc()
+
+```
+
+
+
+
+
+
+
+```{r, include = FALSE}
+indiv_dist$frott_ap_25 <- as.factor(indiv_dist$frott_ap_25)
+
+indiv_dist <- indiv_dist %>% 
+  mutate(prodesante = ifelse(p_naf88 %in% c(88, 87, 86), 1, 0))
+
+indiv_dist <- indiv_dist %>% 
+  mutate(contramed = case_when(c_nobbq_a=="Modalité citée"|c_nobbq_b=="Modalité citée"|c_nobbq_c=="Modalitée citée"~"Contraception médicale",
+                               TRUE~"Pas de contraception médicale"))
+indiv_dist$contramed <- relevel(as.factor(indiv_dist$contramed), ref="Pas de contraception médicale")
+indiv_dist$originegeo_rec <- indiv_dist$originegeo %>%
+  fct_recode(
+    "DOM" = "13"
+  )
+indiv_dist$nais_3ans_rec <- indiv_dist$nais_3ans %>%
+  fct_recode(
+    "Enfants mais pas de naissance dans les trois dernières années" = "Enfants mais pas de naissance\n dans les trois dernières années",
+    NULL = "Refus ou ne sait pas"
+  )
+indiv_dist$s_etat_rec <- indiv_dist$s_etat %>%
+  fct_recode(
+    "Très bon ou bon" = "Très bon",
+    "Très bon ou bon" = "Bon",
+    "Moyen, mauvais ou très mauvais" = "Moyen",
+    "Moyen, mauvais ou très mauvais" = "Mauvais",
+    "Moyen, mauvais ou très mauvais" = "Très mauvais",
+    NULL = "Refus (ne pas lire)",
+    NULL = "NSP (ne pas lire)")
+
+
+
+
+indiv_dist$agenq_cat <- cut(indiv_dist$agenq, breaks = c(17, 24, 35, 45, 60))
+indiv_dist$agenq_cat_rec <- indiv_dist$agenq_cat %>%
+  fct_recode(
+    "Moins de 25 ans" = "(17,24]",
+    "Entre 25 et 35 ans" = "(24,35]",
+    "Entre 35 et 45 ans" = "(35,45]",
+    "Plus de 45 ans" = "(45,60]"
+  )
+
+indiv_dist$dist_min_urg_rec <- cut(indiv_dist$dist_min_urg, breaks = c(0, 1000, 3000, 5000, 10000, 37729))
+## Recodage de indiv_dist$dist_min_urg_rec
+indiv_dist$dist_min_urg_rec <- indiv_dist$dist_min_urg_rec %>%
+  fct_recode(
+    "Moins d'1 km" = "(0,1e+03]",
+    "Entre 1 et 3 km" = "(1e+03,3e+03]",
+    "Entre 3 et 5 km" = "(3e+03,5e+03]",
+    "Entre 5 et 10km" = "(5e+03,1e+04]",
+    "Plus de 10km" = "(1e+04,3.77e+04]"
+  )
+
+indiv_dist$dist_min_mat_rec <- cut(indiv_dist$dist_min_mat, breaks = c(0, 1000, 3000, 5000, 10000, 52343.38))
+## Recodage de indiv_dist$dist_min_urg en indiv_dist$dist_min_urg_rec
+indiv_dist$dist_min_mat_rec <- indiv_dist$dist_min_mat_rec %>%
+  fct_recode(
+    "Moins d'1 km" = "(0,1e+03]",
+    "Entre 1 et 3 km" = "(1e+03,3e+03]",
+    "Entre 3 et 5 km" = "(3e+03,5e+03]",
+    "Entre 5 et 10km" = "(5e+03,1e+04]",
+    "Plus de 10km" = "(1e+04,5.23e+04]"
+  )
+
+indiv_dist$lib_dist_min_gynéco_rec <- cut(indiv_dist$lib_dist_min_gynéco, breaks = c(0, 500, 1500, 4000, 8000, 57347.4))
+## Recodage de indiv_dist$lib_dist_min_gynéco_rec en indiv_dist$lib_dist_min_gynéco_rec_rec
+indiv_dist$lib_dist_min_gynéco_rec <- indiv_dist$lib_dist_min_gynéco_rec %>%
+  fct_recode(
+    "Moins de 500m" = "(0,500]",
+    "Entre 500m et 1.5km" = "(500,1.5e+03]",
+    "Entre 1.5km et 4km" = "(1.5e+03,4e+03]",
+    "Entre 4 et 8km" = "(4e+03,8e+03]",
+    "Plus de 8km" = "(8e+03,5.73e+04]"
+  )
+
+indiv_dist$lib_dist_min_sf_rec <- cut(indiv_dist$lib_dist_min_sf, breaks = c(0, 500, 1500, 4000, 28433.5))
+## Recodage de indiv_dist$lib_dist_min_gynéco_rec en indiv_dist$lib_dist_min_gynéco_rec_rec
+indiv_dist$lib_dist_min_sf_rec <- indiv_dist$lib_dist_min_sf_rec %>%
+  fct_recode(
+    "Moins de 500m" = "(0,500]",
+    "Entre 500m et 1.5km" = "(500,1.5e+03]",
+    "Entre 1.5km et 4km" = "(1.5e+03,4e+03]",
+    "Plus de 4km" = "(4e+03,2.84e+04]"
+  )
+indiv_dist$lib_dist_min_medge_rec <- cut(indiv_dist$lib_dist_min_medge, breaks = c(0, 250, 500, 1000, 1500, 12353.5))
+## Recodage de indiv_dist$lib_dist_min_gynéco_rec en indiv_dist$lib_dist_min_gynéco_rec_rec
+indiv_dist$lib_dist_min_medge_rec <- indiv_dist$lib_dist_min_medge_rec %>%
+  fct_recode(
+    "Moins de 250m" = "(0,250]",
+    "Entre 250m et 500m" = "(250,500]",
+    "Entre 500m et 1km" = "(500,1e+03]",
+    "Entre 1 et 1.5km" = "(1e+03,1.5e+03]",
+    "Plus d'1.5km" = "(1.5e+03,1.24e+04]"
+  )
+
+indiv_dist$com_apl_sagf_rec <- cut(indiv_dist$com_apl_sagf, breaks = c(0, 3, 6, 9, 19.210))
+indiv_dist$com_apl_sagf_rec <- indiv_dist$com_apl_sagf_rec %>%
+  fct_recode(
+    "Faible" = "(0,3]",
+    "Plutôt faible" = "(3,6]",
+    "Plutôt fort" = "(6,9]",
+    "Fort" = "(9,19.2]",
+  )
+
+indiv_dist$com_apl_mg_rec <- cut(indiv_dist$com_apl_mg, breaks = c(0, 50, 70, 90, 183.19))
+indiv_dist$com_apl_mg_rec <- indiv_dist$com_apl_mg_rec %>%
+  fct_recode(
+    "Faible" = "(0,50]",
+    "Plutôt faible" = "(50, 70]",
+    "Plutôt fort" = "(70,90]",
+    "Fort" = "(90,183.2]",
+  )
+
+indiv_dist$com_apl_gyn_rec <- cut(indiv_dist$com_apl_gyn, breaks = c(0, 3, 6, 9, 21.400))
+indiv_dist$com_apl_gyn_rec <- indiv_dist$com_apl_gyn_rec %>%
+  fct_recode(
+    "Faible" = "(0,3]",
+    "Plutôt faible" = "(3,6]",
+    "Plutôt fort" = "(6,9]",
+    "Fort" = "(9,21.4]",
+  )
+
+indiv_dist$agenq_cat_rec <- indiv_dist$agenq_cat %>%
+  fct_recode(
+    "Moins de 25 ans" = "(17,24]",
+    "Entre 25 et 35 ans" = "(24,35]",
+    "Entre 35 et 45 ans" = "(35,45]",
+    "Plus de 45 ans" = "(45,60]"
+  )
+
+indiv_dist <- indiv_dist %>% 
+  mutate(iris_pct_imagh_afs = iris_pct_imagh + iris_pct_imafs) %>% 
+  mutate(iris_pct_imeu = iris_pct_imeus + iris_pct_imue28)
+
+indiv_reg <- indiv_dist %>% select(ident_fa, frott_ap_25, couplee, agenq, agenq_cat_rec, prodesante, originegeo_rec, nais_3ans_rec, s_etat_rec, csnq_ego, r_defcult, q_franc, a_rorig, s_traite, origine_tous_g2, dist_min_mat, dist_min_mat_rec, dist_min_urg,dist_min_urg_rec, lib_dist_min_medge, lib_dist_min_medge_rec, lib_dist_min_gynéco, lib_dist_min_gynéco_rec, lib_dist_min_sf,lib_dist_min_sf_rec, com_apl_mg, com_apl_gyn, com_apl_sagf, urg_5km, mat_5km, lib_medge_1km, lib_sf_1km, lib_gynéco_1km, tuu2017, com_pop_ind_pond, l_immi, l_immi_rec, iris_pct_dip_bac, iris_pct_immi, iris_pct_imafs, iris_pct_imagh, iris_pct_imasie, iris_pct_imeus, iris_pct_imesp, iris_pct_imagh_afs, iris_pct_imeu, com_apl_sagf_rec,com_apl_gyn_rec,c_nobbpq_e,contramed, com_apl_mg_rec, poidsi) %>% filter(!is.na(frott_ap_25)&!is.na(nais_3ans_rec)&!is.na(s_etat_rec)&!is.na(q_franc)&!is.na(s_traite))
+
+indiv_reg$frott_ap_25 <- as.factor(indiv_reg$frott_ap_25) 
+indiv_reg$frott_ap_25 <- relevel(indiv_reg$frott_ap_25, ref = 'Pas de frottis')
+# indiv_reg$r_defcult <- relevel(indiv_reg$r_defcult, ref = 'Rien de tout cela')
+indiv_reg$s_traite <- relevel(indiv_reg$s_traite, ref = "Non")
+indiv_reg$nais_3ans_rec <- relevel(indiv_reg$nais_3ans_rec, ref = "Pas d'enfants")
+indiv_reg$l_immi_rec <- relevel(indiv_reg$l_immi_rec, ref = "Minorité immigrée")
+
+indiv_reg$couplee <- relevel(indiv_reg$couplee, ref = 'Ne vit pas en couple')
+indiv_reg$csnq_ego <- relevel(indiv_reg$csnq_ego, ref = 'Cadre / profession libérale')
+indiv_reg$agenq_cat_rec <- relevel(indiv_reg$agenq_cat_rec, ref = "Entre 35 et 45 ans")
+
+indiv_reg$agenq_cat_rec2 <- indiv_reg$agenq_cat_rec %>%
+  fct_recode(
+    "Moins de 45 ans" = "Entre 35 et 45 ans",
+    "Moins de 45 ans" = "Moins de 25 ans",
+    "Plus de 45 ans" = "Entre 25 et 35 ans"
+  )
+indiv_reg$agenq_cat_rec2 <- relevel(indiv_reg$agenq_cat_rec2, ref = "Moins de 45 ans")
+## Recodage de indiv_reg$couplee en indiv_reg$couplee_rec
+indiv_reg$couplee_rec <- indiv_reg$couplee %>%
+  fct_recode(
+    "Ne vit pas en couple" = "Vit actuellement en couple avec une personne qui vit en dehors du logement"
+  )
+## Recodage de indiv_reg$csnq_ego en indiv_reg$csnq_ego_rec
+indiv_reg$csnq_ego_rec <- indiv_reg$csnq_ego %>%
+  fct_recode(
+    "Classe supérieure" = "Cadre / profession libérale",
+    "Classe moyenne" = "Agriculteur",
+    "Classe moyenne" = "Artisan / Commerçant",
+    "Classe moyenne" = "Profession intermédiaire",
+    "Classe populaire" = "Employé qualifié",
+    "Classe populaire" = "Employé non qualifié",
+    "Classe populaire" = "Ouvrier qualifié",
+    "Classe populaire" = "Ouvrier non qualifié",
+    NULL = "NSP, refus, incodable"
+  )
+
+indiv_reg$s_traite_rec <- indiv_reg$s_traite %>%
+  fct_recode(
+    "Refus ou ne sait pas" = "Refus (ne pas lire)",
+    "Refus ou ne sait pas" = "NSP (ne pas lire)")
+
+
+
+indiv_reg_pd <-svydesign(ids = indiv_reg$ident_fa, data = indiv_reg, weights = indiv_reg$poidsi)
+
+
+```
+
+## Régressions{.tabset .tabset-fade}
+
+### Avec les origines des immigrés
+il faudrait enlever les c_nobbpq_e de la base
+```{r}
+model <- svyglm(as.factor(frott_ap_25) ~ as.factor(nais_3ans_rec)+as.factor(couplee_rec)+agenq_cat_rec+as.factor(originegeo_rec)+as.factor(s_etat_rec)+as.factor(csnq_ego)+as.factor(q_franc)+as.factor(s_traite_rec) +as.factor(c_nobbpq_e)+contramed
+             , family = quasibinomial,
+  design = indiv_reg_pd)
+```
+
+```{r, echo = FALSE, fig.height=8, fig.width=10}
+# data$Color <- ifelse(data$Significance, "blue", "red")
+
+# b <- list(geom_vline(xintercept = 0, color = 'black'))
+library(ggstats)
+ggstats::ggcoef_model(model, exponentiate = TRUE, variable_labels = c("as.factor(originegeo_rec)" = "Origine", "as.factor(nais_3ans_rec)" = "Enfant", "as.factor(couplee_rec)" = "Couple", "agenq_cat_rec" = "Âge", "as.factor(s_etat_rec)" = "Etat de santé perçu", "as.factor(q_franc)" = "Maîtrise du français\n (évaluation par l'enquêteur.rice)", "as.factor(s_traite_rec)" = "Discrimination par \nprofessionnel de santé", "as.factor(csnq_ego)" = "Classe sociale"))
+```
+
+En reclassant les CSP
+```{r, include =FALSE}
+model <- svyglm(as.factor(frott_ap_25) ~ as.factor(nais_3ans_rec)+as.factor(couplee_rec)+agenq_cat_rec+as.factor(originegeo_rec)+as.factor(s_etat_rec)+as.factor(csnq_ego_rec)+as.factor(q_franc)+as.factor(s_traite_rec)
+             , family = quasibinomial,
+  design = indiv_reg_pd)
+```
+
+```{r, echo = FALSE, fig.height=8, fig.width=10}
+# data$Color <- ifelse(data$Significance, "blue", "red")
+
+# b <- list(geom_vline(xintercept = 0, color = 'black'))
+library(ggstats)
+ggstats::ggcoef_model(model, exponentiate = TRUE, variable_labels = c("as.factor(originegeo_rec)" = "Origine", "as.factor(nais_3ans_rec)" = "Enfant", "as.factor(couplee_rec)" = "Couple", "agenq_cat_rec" = "Âge", "as.factor(s_etat_rec)" = "Etat de santé perçu", "as.factor(q_franc)" = "Maîtrise du français\n (évaluation par l'enquêteur.rice)", "as.factor(s_traite_rec)" = "Discrimination par \nprofessionnel de santé", "as.factor(csnq_ego_rec)" = "Classe sociale"))
+```
+
+```{r, echo = FALSE, fig.height=8, fig.width=10}
+model1 <- svyglm(as.factor(frott_ap_25) ~ as.factor(originegeo_rec)
+             , family = quasibinomial,
+  design = indiv_reg_pd)
+model2 <- svyglm(as.factor(frott_ap_25) ~ as.factor(nais_3ans_rec)+as.factor(originegeo_rec)
+             , family = quasibinomial,
+  design = indiv_reg_pd)
+model3 <- svyglm(as.factor(frott_ap_25) ~ as.factor(nais_3ans_rec)+as.factor(s_etat_rec)+as.factor(originegeo_rec)
+             , family = quasibinomial,
+  design = indiv_reg_pd)
+model4 <- svyglm(as.factor(frott_ap_25) ~ as.factor(nais_3ans_rec)+as.factor(s_etat_rec)+as.factor(s_traite_rec)+as.factor(originegeo_rec)
+             , family = quasibinomial,
+  design = indiv_reg_pd)
+model5 <- svyglm(as.factor(frott_ap_25) ~ as.factor(nais_3ans_rec)+agenq_cat_rec+as.factor(s_etat_rec)+as.factor(s_traite_rec)+as.factor(originegeo_rec)
+             , family = quasibinomial,
+  design = indiv_reg_pd)
+model6 <- svyglm(as.factor(frott_ap_25) ~ as.factor(nais_3ans_rec)+agenq_cat_rec+as.factor(s_etat_rec)+as.factor(csnq_ego_rec)+as.factor(s_traite_rec)+as.factor(originegeo_rec)
+             , family = quasibinomial,
+  design = indiv_reg_pd)
+model7 <- svyglm(as.factor(frott_ap_25) ~ as.factor(nais_3ans_rec)+as.factor(couplee_rec)+agenq_cat_rec+as.factor(s_etat_rec)+as.factor(csnq_ego_rec)+as.factor(s_traite_rec)+as.factor(originegeo_rec)
+             , family = quasibinomial,
+  design = indiv_reg_pd)
+model8 <- svyglm(as.factor(frott_ap_25) ~ as.factor(nais_3ans_rec)+as.factor(couplee_rec)+agenq_cat_rec+as.factor(s_etat_rec)+as.factor(csnq_ego_rec)+as.factor(q_franc)+as.factor(s_traite_rec)+as.factor(originegeo_rec)
+             , family = quasibinomial,
+  design = indiv_reg_pd)
+
+
+ggstats::ggcoef_compare(list(model1, model2, model3, model4, model5, model6, model7, model8), type = "faceted", exponentiate = TRUE, variable_labels = c("as.factor(originegeo_rec)" = "Origine", "as.factor(nais_3ans_rec)" = "Enfant", "as.factor(couplee_rec)" = "Couple", "agenq_cat_rec" = "Âge", "as.factor(s_etat_rec)" = "Etat de santé perçu", "as.factor(q_franc)" = "Maîtrise du français\n (évaluation par l'enquêteur.rice)", "as.factor(s_traite_rec)" = "Discrimination par \nprofessionnel de santé", "as.factor(csnq_ego_rec)" = "Classe sociale"))
+```
+
+### Avec les origines des immigrés et des G2
+
+```{r, echo = FALSE, fig.height=12, fig.width=10}
+model2 <- svyglm(as.factor(frott_ap_25) ~ as.factor(nais_3ans_rec)+as.factor(couplee_rec)+agenq_cat_rec+as.factor(s_etat_rec)+as.factor(csnq_ego)+as.factor(q_franc)+as.factor(s_traite_rec)+as.factor(origine_tous_g2)
+             , family = quasibinomial,
+  design = indiv_reg_pd)
+
+library(ggstats)
+ggstats::ggcoef_model(model2, exponentiate = TRUE, variable_labels = c("as.factor(origine_tous_g2)" = "Origine", "as.factor(nais_3ans_rec)" = "Enfant", "as.factor(couplee_rec)" = "Couple", "agenq_cat_rec" = "Âge", "as.factor(s_etat_rec)" = "Etat de santé perçu", "as.factor(q_franc)" = "Maîtrise du français\n (évaluation par l'enquêteur.rice)", "as.factor(s_traite_rec)" = "Discrimination par \nprofessionnel de santé", "as.factor(csnq_ego)" = "Classe sociale"))
+```
+En regroupant les CSP
+```{r, echo = FALSE, fig.height=12, fig.width=10}
+model2 <- svyglm(as.factor(frott_ap_25) ~ as.factor(nais_3ans_rec)+as.factor(couplee_rec)+agenq_cat_rec+as.factor(s_etat_rec)+as.factor(csnq_ego_rec)+as.factor(q_franc)+as.factor(s_traite_rec)+as.factor(origine_tous_g2)
+             , family = quasibinomial,
+  design = indiv_reg_pd)
+
+library(ggstats)
+ggstats::ggcoef_model(model2, exponentiate = TRUE, variable_labels = c("as.factor(origine_tous_g2)" = "Origine", "as.factor(nais_3ans_rec)" = "Enfant", "as.factor(couplee_rec)" = "Couple", "agenq_cat_rec" = "Âge", "as.factor(s_etat_rec)" = "Etat de santé perçu", "as.factor(q_franc)" = "Maîtrise du français\n (évaluation par l'enquêteur.rice)", "as.factor(s_traite_rec)" = "Discrimination par \nprofessionnel de santé", "as.factor(csnq_ego_rec)" = "Classe sociale"))
+```
+
+```{r, echo = FALSE, fig.height=12, fig.width=10}
+model2_1 <- svyglm(as.factor(frott_ap_25) ~ as.factor(origine_tous_g2)
+             , family = quasibinomial,
+  design = indiv_reg_pd)
+model2_2 <- svyglm(as.factor(frott_ap_25) ~ as.factor(nais_3ans_rec)+as.factor(origine_tous_g2)
+             , family = quasibinomial,
+  design = indiv_reg_pd)
+model2_3 <- svyglm(as.factor(frott_ap_25) ~ as.factor(nais_3ans_rec)+as.factor(s_etat_rec)+as.factor(origine_tous_g2)
+             , family = quasibinomial,
+  design = indiv_reg_pd)
+model2_4 <- svyglm(as.factor(frott_ap_25) ~ as.factor(nais_3ans_rec)+as.factor(s_etat_rec)+as.factor(s_traite_rec)+as.factor(origine_tous_g2)
+             , family = quasibinomial,
+  design = indiv_reg_pd)
+model2_5 <- svyglm(as.factor(frott_ap_25) ~ as.factor(nais_3ans_rec)+agenq_cat_rec+as.factor(s_etat_rec)+as.factor(s_traite_rec)+as.factor(origine_tous_g2)
+             , family = quasibinomial,
+  design = indiv_reg_pd)
+model2_6 <- svyglm(as.factor(frott_ap_25) ~ as.factor(nais_3ans_rec)+agenq_cat_rec+as.factor(s_etat_rec)+as.factor(csnq_ego_rec)+as.factor(s_traite_rec)+as.factor(origine_tous_g2)
+             , family = quasibinomial,
+  design = indiv_reg_pd)
+model2_7 <- svyglm(as.factor(frott_ap_25) ~ as.factor(nais_3ans_rec)+as.factor(couplee_rec)+agenq_cat_rec+as.factor(s_etat_rec)+as.factor(csnq_ego_rec)+as.factor(s_traite_rec)+as.factor(origine_tous_g2)
+             , family = quasibinomial,
+  design = indiv_reg_pd)
+model2_8 <- svyglm(as.factor(frott_ap_25) ~ as.factor(nais_3ans_rec)+as.factor(couplee_rec)+agenq_cat_rec+as.factor(s_etat_rec)+as.factor(csnq_ego_rec)+as.factor(q_franc)+as.factor(s_traite_rec)+as.factor(origine_tous_g2)
+             , family = quasibinomial,
+  design = indiv_reg_pd)
+model2_9 <- svyglm(as.factor(frott_ap_25) ~ as.factor(nais_3ans_rec)+as.factor(couplee_rec)+agenq_cat_rec+as.factor(s_etat_rec)+as.factor(csnq_ego_rec)+as.factor(q_franc)+as.factor(s_traite_rec)+as.factor(origine_tous_g2)+as.numeric(agenq)
+             , family = quasibinomial,
+  design = indiv_reg_pd)
+
+ggstats::ggcoef_compare(list(model2_1, model2_2, model2_3, model2_4, model2_5, model2_6, model2_7, model2_8, model2_9), type = "faceted", exponentiate = TRUE, variable_labels = c("as.factor(origine_tous_g2)" = "Origine", "as.factor(nais_3ans_rec)" = "Enfant", "as.factor(couplee)" = "Couple", "agenq_cat_rec" = "Âge", "as.factor(s_etat_rec)" = "Etat de santé perçu", "as.factor(q_franc)" = "Maîtrise du français\n (évaluation par l'enquêteur.rice)", "as.factor(s_traite_rec)" = "Discrimination par \nprofessionnel de santé", "as.factor(csnq_ego_rec)" = "Classe sociale"))
+```
+### avec segreg
+On n'affiche que les coefficients qui deviennent significatives/non-significatives selon les variables ajoutées
+```{r, echo = FALSE, fig.height=8, fig.width=10}
+modela <- svyglm(as.factor(frott_ap_25) ~ as.factor(nais_3ans_rec)+as.factor(couplee_rec)+agenq_cat_rec+as.factor(s_etat_rec)+as.factor(csnq_ego_rec)+as.factor(q_franc)+as.factor(originegeo_rec)+tuu2017
+             , family = quasibinomial,
+  design = indiv_reg_pd)
+modelb <- svyglm(as.factor(frott_ap_25) ~ as.factor(nais_3ans_rec)+as.factor(couplee_rec)+agenq_cat_rec+as.factor(s_etat_rec)+as.factor(csnq_ego_rec)+as.factor(q_franc)+as.factor(originegeo_rec)+tuu2017+iris_pct_immi
+             , family = quasibinomial,
+  design = indiv_reg_pd)
+modelc <- svyglm(as.factor(frott_ap_25) ~ as.factor(nais_3ans_rec)+as.factor(couplee_rec)+agenq_cat_rec+as.factor(s_etat_rec)+as.factor(csnq_ego_rec)+as.factor(q_franc)+as.factor(originegeo_rec)+tuu2017+iris_pct_imasie+iris_pct_imagh_afs+iris_pct_imeu
+             , family = quasibinomial,
+  design = indiv_reg_pd)
+
+modeld <- svyglm(as.factor(frott_ap_25) ~ as.factor(nais_3ans_rec)+as.factor(couplee_rec)+agenq_cat_rec+as.factor(s_etat_rec)+as.factor(csnq_ego_rec)+as.factor(q_franc)+as.factor(originegeo_rec)+tuu2017+l_immi_rec
+             , family = quasibinomial,
+  design = indiv_reg_pd)
+modele <- svyglm(as.factor(frott_ap_25) ~ as.factor(nais_3ans_rec)+as.factor(couplee_rec)+agenq_cat_rec+as.factor(s_etat_rec)+as.factor(csnq_ego_rec)+as.factor(q_franc)+as.factor(originegeo_rec)+l_immi_rec
+             , family = quasibinomial,
+  design = indiv_reg_pd)
+modelf <- svyglm(as.factor(frott_ap_25) ~ as.factor(nais_3ans_rec)+as.factor(couplee_rec)+agenq_cat_rec+as.factor(s_etat_rec)+as.factor(csnq_ego_rec)+as.factor(q_franc)+as.factor(originegeo_rec)+iris_pct_imasie+iris_pct_imagh_afs+iris_pct_imeu
+             , family = quasibinomial,
+  design = indiv_reg_pd)
+modelg <- svyglm(as.factor(frott_ap_25) ~ as.factor(nais_3ans_rec)+as.factor(couplee_rec)+agenq_cat_rec+as.factor(s_etat_rec)+as.factor(csnq_ego_rec)+as.factor(q_franc)+as.factor(originegeo_rec)+iris_pct_immi
+             , family = quasibinomial,
+  design = indiv_reg_pd)
+
+
+ggstats::ggcoef_compare(list(modela, modelb, modelc, modeld, modelg, modelf, modele), type = "faceted", exponentiate = TRUE, variable_labels = c("as.factor(originegeo_rec)" = "Origine", "as.factor(nais_3ans_rec)" = "Enfant", "as.factor(couplee_rec)" = "Couple", "agenq_cat_rec" = "Âge", "as.factor(s_etat_rec)" = "Etat de santé perçu", "as.factor(q_franc)" = "Maîtrise du français\n (évaluation par l'enquêteur.rice)", "as.factor(s_traite_rec)" = "Discrimination par \nprofessionnel de santé", "as.factor(csnq_ego_rec)" = "Classe sociale", "tuu2017" = "Type d'unité urbaine"), include = c("as.factor(originegeo_rec)", "as.factor(couplee_rec)", "tuu2017", "iris_pct_immi", "iris_pct_imasie", "iris_pct_imagh_afs", "iris_pct_imeu", "l_immi_rec"))
+```
+### Avec accès
+On n'affiche que les coefficients qui deviennent significatives/non-significatives selon les variables ajoutées
+
+```{r, echo = FALSE, fig.height=12, fig.width=10}
+# dist_min_mat, dist_min_urg,lib_dist_min_medge, lib_dist_min_gynéco, lib_dist_min_sf, com_apl_mg, com_apl_gyn, com_apl_sagf, urg_5km, mat_5km, lib_medge_1km, lib_sf_1km, lib_gynéco_1km
+model <- svyglm(as.factor(frott_ap_25) ~ as.factor(nais_3ans_rec)+as.factor(couplee_rec)+agenq_cat_rec+as.factor(s_etat_rec)+as.factor(csnq_ego_rec)+as.factor(q_franc)+as.factor(originegeo_rec)
+             , family = quasibinomial,
+  design = indiv_reg_pd)
+modela <- svyglm(as.factor(frott_ap_25) ~ as.factor(nais_3ans_rec)+as.factor(couplee_rec)+agenq_cat_rec+as.factor(s_etat_rec)+as.factor(csnq_ego_rec)+as.factor(q_franc)+as.factor(originegeo_rec)+dist_min_mat+ dist_min_urg+lib_dist_min_medge+ lib_dist_min_gynéco+ lib_dist_min_sf
+             , family = quasibinomial,
+  design = indiv_reg_pd)
+modelb <- svyglm(as.factor(frott_ap_25) ~ as.factor(nais_3ans_rec)+as.factor(couplee_rec)+agenq_cat_rec+as.factor(s_etat_rec)+as.factor(csnq_ego_rec)+as.factor(q_franc)+as.factor(originegeo_rec)+com_apl_mg+ com_apl_gyn+ com_apl_sagf
+             , family = quasibinomial,
+  design = indiv_reg_pd)
+modelbb <- svyglm(as.factor(frott_ap_25) ~ as.factor(nais_3ans_rec)+as.factor(couplee_rec)+agenq_cat_rec+as.factor(s_etat_rec)+as.factor(csnq_ego_rec)+as.factor(q_franc)+as.factor(originegeo_rec)+com_apl_mg_rec+ com_apl_gyn_rec+ com_apl_sagf_rec
+             , family = quasibinomial,
+  design = indiv_reg_pd)
+modeld <- svyglm(as.factor(frott_ap_25) ~ as.factor(nais_3ans_rec)+as.factor(couplee_rec)+agenq_cat_rec+as.factor(s_etat_rec)+as.factor(csnq_ego_rec)+as.factor(q_franc)+as.factor(originegeo_rec)+dist_min_mat+ dist_min_urg+lib_dist_min_medge+ lib_dist_min_gynéco+ lib_dist_min_sf+tuu2017
+             , family = quasibinomial,
+  design = indiv_reg_pd)
+modele <- svyglm(as.factor(frott_ap_25) ~ as.factor(nais_3ans_rec)+as.factor(couplee_rec)+agenq_cat_rec+as.factor(s_etat_rec)+as.factor(csnq_ego_rec)+as.factor(q_franc)+as.factor(originegeo_rec)+com_apl_mg+ com_apl_gyn+ com_apl_sagf+tuu2017
+             , family = quasibinomial,
+  design = indiv_reg_pd)
+modeleb <- svyglm(as.factor(frott_ap_25) ~ as.factor(nais_3ans_rec)+as.factor(couplee_rec)+agenq_cat_rec+as.factor(s_etat_rec)+as.factor(csnq_ego_rec)+as.factor(q_franc)+as.factor(originegeo_rec)+com_apl_mg_rec+ com_apl_gyn_rec+ com_apl_sagf_rec+tuu2017
+             , family = quasibinomial,
+  design = indiv_reg_pd)
+modelf <- svyglm(as.factor(frott_ap_25) ~ as.factor(nais_3ans_rec)+as.factor(couplee_rec)+agenq_cat_rec+as.factor(s_etat_rec)+as.factor(csnq_ego_rec)+as.factor(q_franc)+as.factor(originegeo_rec)+urg_5km+ mat_5km+ lib_medge_1km+ lib_sf_1km+ lib_gynéco_1km
+             , family = quasibinomial,
+  design = indiv_reg_pd)
+modelg <- svyglm(as.factor(frott_ap_25) ~ as.factor(nais_3ans_rec)+as.factor(couplee_rec)+agenq_cat_rec+as.factor(s_etat_rec)+as.factor(csnq_ego_rec)+as.factor(q_franc)+as.factor(originegeo_rec)+urg_5km+ mat_5km+ lib_medge_1km+ lib_sf_1km+ lib_gynéco_1km+tuu2017
+             , family = quasibinomial,
+  design = indiv_reg_pd)
+modelh <- svyglm(as.factor(frott_ap_25) ~ as.factor(nais_3ans_rec)+as.factor(couplee_rec)+agenq_cat_rec+as.factor(s_etat_rec)+as.factor(csnq_ego_rec)+as.factor(q_franc)+as.factor(originegeo_rec)+dist_min_mat_rec+ dist_min_urg_rec+lib_dist_min_medge_rec+ lib_dist_min_gynéco_rec+ lib_dist_min_sf_rec
+             , family = quasibinomial,
+  design = indiv_reg_pd)
+modeli <- svyglm(as.factor(frott_ap_25) ~ as.factor(nais_3ans_rec)+as.factor(couplee_rec)+agenq_cat_rec+as.factor(s_etat_rec)+as.factor(csnq_ego_rec)+as.factor(q_franc)+as.factor(originegeo_rec)+dist_min_mat_rec+ dist_min_urg_rec+lib_dist_min_medge_rec+ lib_dist_min_gynéco_rec+ lib_dist_min_sf_rec+tuu2017
+             , family = quasibinomial,
+  design = indiv_reg_pd)
+
+ggstats::ggcoef_compare(list(model, modela, modeld, modelb,modelbb, modele,modeleb, modelf, modelg, modelh, modeli), type = "faceted", exponentiate = TRUE, variable_labels = c( "as.factor(originegeo_rec)" = "Origine", "tuu2017"="Type d'unité urbaine"), include = c("as.factor(originegeo_rec)", "dist_min_mat_rec", "dist_min_urg_rec", "lib_dist_min_medge_rec", "lib_dist_min_gynéco_rec", "lib_dist_min_sf_rec", "tuu2017", "urg_5km", "mat_5km", "lib_medge_1km", "lib_sf_1km", "lib_gynéco_1km", "com_apl_mg", "com_apl_gyn", "com_apl_sagf", "dist_min_mat", "dist_min_urg", "lib_dist_min_medge",  "lib_dist_min_gynéco", "lib_dist_min_sf", "com_apl_sagf_rec", "com_apl_mg_rec", "com_apl_gyn_rec"))
+
+```
+
+Sans les autres variables du modèle de base
+```{r, echo = FALSE, fig.height=12, fig.width=10}
+model <- svyglm(as.factor(frott_ap_25) ~ as.factor(originegeo_rec)+dist_min_mat+ dist_min_urg+lib_dist_min_medge+ lib_dist_min_gynéco+ lib_dist_min_sf
+             , family = quasibinomial,
+  design = indiv_reg_pd)
+modela <- svyglm(as.factor(frott_ap_25) ~ as.factor(nais_3ans_rec)+as.factor(originegeo_rec)+dist_min_mat+ dist_min_urg+lib_dist_min_medge+ lib_dist_min_gynéco+ lib_dist_min_sf
+             , family = quasibinomial,
+  design = indiv_reg_pd)
+modelb <- svyglm(as.factor(frott_ap_25) ~ as.factor(originegeo_rec)+com_apl_mg+ com_apl_gyn+ com_apl_sagf
+             , family = quasibinomial,
+  design = indiv_reg_pd)
+modeld <- svyglm(as.factor(frott_ap_25) ~ as.factor(nais_3ans_rec)+as.factor(originegeo_rec)+com_apl_mg+ com_apl_gyn+ com_apl_sagf
+             , family = quasibinomial,
+  design = indiv_reg_pd)
+modele <- svyglm(as.factor(frott_ap_25) ~ as.factor(originegeo_rec)+urg_5km+ mat_5km+ lib_medge_1km+ lib_sf_1km+ lib_gynéco_1km
+             , family = quasibinomial,
+  design = indiv_reg_pd)
+modelf <- svyglm(as.factor(frott_ap_25) ~ as.factor(nais_3ans_rec)+as.factor(originegeo_rec)+urg_5km+ mat_5km+ lib_medge_1km+ lib_sf_1km+ lib_gynéco_1km
+             , family = quasibinomial,
+  design = indiv_reg_pd)
+modelh <- svyglm(as.factor(frott_ap_25) ~ as.factor(originegeo_rec)+dist_min_mat_rec+ dist_min_urg_rec+lib_dist_min_medge_rec+ lib_dist_min_gynéco_rec+ lib_dist_min_sf_rec
+             , family = quasibinomial,
+  design = indiv_reg_pd)
+modeli <- svyglm(as.factor(frott_ap_25) ~ as.factor(nais_3ans_rec)+as.factor(originegeo_rec)+dist_min_mat_rec+ dist_min_urg_rec+lib_dist_min_medge_rec+ lib_dist_min_gynéco_rec+ lib_dist_min_sf_rec
+             , family = quasibinomial,
+  design = indiv_reg_pd)
+modelj <- svyglm(as.factor(frott_ap_25) ~ dist_min_mat_rec+ dist_min_urg_rec+lib_dist_min_medge_rec+ lib_dist_min_gynéco_rec+ lib_dist_min_sf_rec
+             , family = quasibinomial,
+  design = indiv_reg_pd)
+modelk <- svyglm(as.factor(frott_ap_25) ~ urg_5km+ mat_5km+ lib_medge_1km+ lib_sf_1km+ lib_gynéco_1km
+             , family = quasibinomial,
+  design = indiv_reg_pd)
+modell <- svyglm(as.factor(frott_ap_25) ~ com_apl_mg+ com_apl_gyn+ com_apl_sagf
+             , family = quasibinomial,
+  design = indiv_reg_pd)
+modelm <- svyglm(as.factor(frott_ap_25) ~ dist_min_mat+ dist_min_urg+lib_dist_min_medge+ lib_dist_min_gynéco+ lib_dist_min_sf
+             , family = quasibinomial,
+  design = indiv_reg_pd)
+
+ggstats::ggcoef_compare(list(model, modela, modeld, modelb, modele, modelf, modelh, modeli), type = "faceted", exponentiate = TRUE, variable_labels = c( "as.factor(originegeo_rec)" = "Origine"))
+ggstats::ggcoef_compare(list(modelj, modelk, modell, modelm), type = "faceted", exponentiate = TRUE)
+```
+Sans l'origine, seuls l'APL aux sages-femmes et au médecin généraliste sont significatives.
+Avec l'origine, seulement APL aux sages-femmes.
+
+### Interaction ?{.tabset .tabset-fade}
+
+#### Vérification effectifs
+```{r}
+table(indiv_reg$com_apl_sagf_rec, indiv_reg$originegeo_rec)
+
+```
+```{r}
+table(indiv_reg$dist_min_urg_rec, indiv_reg$originegeo_rec)
+
+```
+
+```{r}
+table(indiv_reg$agenq_cat_rec, indiv_reg$originegeo_rec)
+
+```
+
+#### Modélisation
+```{r}
+model_interact <- svyglm(as.factor(frott_ap_25) ~ as.factor(nais_3ans_rec)+as.factor(couplee_rec)+agenq_cat_rec+as.factor(s_etat_rec)+as.factor(csnq_ego_rec)+as.factor(q_franc)+as.factor(originegeo_rec)*agenq_cat_rec+tuu2017
+             , family = quasibinomial,
+  design = indiv_reg_pd)
+```
+
+
+```{r, echo = FALSE, fig.height=12, fig.width=10}
+ggstats::ggcoef_model(model_interact, exponentiate = TRUE, variable_labels = c( "as.factor(originegeo_rec)" = "Origine"), include = c("agenq_cat_rec:as.factor(originegeo_rec)", "as.factor(originegeo_rec)", "agenq_cat_rec"))
+```
+Maroc ou Tunisie et jeune, autres pays et jeune
+
+```{r}
+model_interact <- svyglm(as.factor(frott_ap_25) ~ as.factor(nais_3ans_rec)+as.factor(couplee_rec)+agenq_cat_rec+as.factor(s_etat_rec)+as.factor(csnq_ego_rec)+as.factor(q_franc)+as.factor(originegeo_rec)*com_apl_sagf_rec
+             , family = quasibinomial,
+  design = indiv_reg_pd)
+```
+
+
+```{r, echo = FALSE, fig.height=12, fig.width=10}
+ggstats::ggcoef_model(model_interact, exponentiate = TRUE, variable_labels = c( "as.factor(originegeo_rec)" = "Origine"), include = c("as.factor(originegeo_rec):com_apl_sagf_rec", "as.factor(originegeo_rec)", "com_apl_sagf_rec"))
+```
+Ici les odd-ratio des facteurs d'interaction n'ont pas de sens...
+
+
+#### Modélisation avec origines agrégées
+Donc on recode :
+```{r}
+## Recodage de indiv_reg$originegeo_rec en indiv_reg$originegeo_rec_rec
+indiv_reg$originegeo_rec_rec <- indiv_reg$originegeo_rec %>%
+  fct_recode(
+    "France" = "France métropolitaine",
+    "France" = "DOM",
+    "Algérie, Maroc, Tunisie, Turquie, Moyen-Orient" = "Algérie",
+    "Algérie, Maroc, Tunisie, Turquie, Moyen-Orient" = "Maroc ou Tunisie",
+    "Autres pays d'Afrique" = "Afrique sahélienne",
+    "Autres pays d'Afrique" = "Afrique guinéenne ou centrale",
+    "Autres pays d'Asie" = "Asie du Sud-Est",
+    "Algérie, Maroc, Tunisie, Turquie, Moyen-Orient" = "Turquie ou Moyen-Orient",
+    "Autres pays d'Asie" = "Chine",
+    "Europe" = "Portugal",
+    "Europe" = "Espagne ou talie",
+    "Europe" = "Autres pays de l'UE27",
+    "Europe" = "Autres pays d'Europe",
+    "Autre" = "Autre pays"
+  )
+```
+
+```{r, include =FALSE}
+indiv_reg_pd <-svydesign(ids = indiv_reg$ident_fa, data = indiv_reg, weights = indiv_reg$poidsi)
+
+```
+
+Modèle sans interaction sans accès, sans ségrégation
+```{r}
+model <- svyglm(as.factor(frott_ap_25) ~ as.factor(nais_3ans_rec)+as.factor(couplee_rec)+agenq_cat_rec+as.factor(s_etat_rec)+as.factor(csnq_ego_rec)+as.factor(q_franc)+as.factor(originegeo_rec_rec)
+             , family = quasibinomial,
+  design = indiv_reg_pd)
+```
+
+
+```{r, echo = FALSE, fig.height=8, fig.width=10}
+ggstats::ggcoef_model(model, exponentiate = TRUE, variable_labels = c( "as.factor(originegeo_rec_rec)" = "Origine"))
+```
+
+```{r}
+model_interact <- svyglm(as.factor(frott_ap_25) ~ as.factor(nais_3ans_rec)+as.factor(couplee_rec)+agenq_cat_rec+as.factor(s_etat_rec)+as.factor(csnq_ego_rec)+as.factor(q_franc)+as.factor(originegeo_rec_rec)*com_apl_sagf_rec
+             , family = quasibinomial,
+  design = indiv_reg_pd)
+```
+
+
+```{r, echo = FALSE, fig.height=12, fig.width=10}
+ggstats::ggcoef_model(model_interact, exponentiate = TRUE, variable_labels = c( "as.factor(originegeo_rec_rec)" = "Origine"), include = c("as.factor(originegeo_rec_rec):com_apl_sagf_rec", "as.factor(originegeo_rec_rec)", "com_apl_sagf_rec"))
+```
+
+
+```{r}
+model_interact <- svyglm(as.factor(frott_ap_25) ~ as.factor(couplee_rec)+agenq_cat_rec+as.factor(s_etat_rec)+as.factor(csnq_ego_rec)+as.factor(q_franc)+as.factor(originegeo_rec_rec)*as.factor(nais_3ans_rec)+com_apl_sagf_rec
+             , family = quasibinomial,
+  design = indiv_reg_pd)
+```
+
+
+```{r, echo = FALSE, fig.height=12, fig.width=15}
+ggstats::ggcoef_model(model_interact, exponentiate = TRUE, variable_labels = c( "as.factor(originegeo_rec_rec)" = "Origine"), include = c("as.factor(originegeo_rec_rec):as.factor(nais_3ans_rec)", "as.factor(originegeo_rec_rec)", "as.factor(nais_3ans_rec)"))
+```
+
+
+```{r}
+model_interact <- svyglm(as.factor(frott_ap_25) ~ as.factor(couplee_rec)+agenq_cat_rec+as.factor(s_etat_rec)+as.factor(csnq_ego_rec)+as.factor(q_franc)+as.factor(originegeo_rec_rec)*agenq_cat_rec+com_apl_sagf_rec+as.factor(nais_3ans_rec)
+             , family = quasibinomial,
+  design = indiv_reg_pd)
+```
+
+
+```{r, echo = FALSE, fig.height=12, fig.width=10}
+ggstats::ggcoef_model(model_interact, exponentiate = TRUE, variable_labels = c( "as.factor(originegeo_rec_rec)" = "Origine"), include = c("agenq_cat_rec:as.factor(originegeo_rec_rec)", "as.factor(originegeo_rec_rec)", "agenq_cat_rec"))
+```
+
+
+```{r}
+model_interact <- svyglm(as.factor(frott_ap_25) ~ as.factor(couplee_rec)+agenq_cat_rec+as.factor(s_etat_rec)+as.factor(csnq_ego_rec)+as.factor(q_franc)+as.factor(originegeo_rec_rec)*as.factor(s_etat_rec)+com_apl_sagf_rec+as.factor(nais_3ans_rec)
+             , family = quasibinomial,
+  design = indiv_reg_pd)
+```
+
+
+```{r, echo = FALSE, fig.height=12, fig.width=10}
+ggstats::ggcoef_model(model_interact, exponentiate = TRUE, variable_labels = c( "as.factor(originegeo_rec_rec)" = "Origine"), include = c("as.factor(s_etat_rec):as.factor(originegeo_rec_rec)", "as.factor(originegeo_rec_rec)", "as.factor(s_etat_rec)"))
+```
+
+
+```{r}
+model_interact <- svyglm(as.factor(frott_ap_25) ~ as.factor(couplee_rec)+agenq_cat_rec+as.factor(s_etat_rec)+as.factor(csnq_ego_rec)+as.factor(q_franc)+as.factor(originegeo_rec_rec)*as.factor(csnq_ego_rec)+com_apl_sagf_rec+as.factor(nais_3ans_rec)
+             , family = quasibinomial,
+  design = indiv_reg_pd)
+```
+
+
+```{r, echo = FALSE, fig.height=12, fig.width=10}
+ggstats::ggcoef_model(model_interact, exponentiate = TRUE, variable_labels = c( "as.factor(originegeo_rec_rec)" = "Origine"), include = c("as.factor(csnq_ego_rec):as.factor(originegeo_rec_rec)", "as.factor(originegeo_rec_rec)", "as.factor(csnq_ego_rec)"))
+```
+
+```{r}
+model_interact <- svyglm(as.factor(frott_ap_25) ~ as.factor(couplee_rec)+agenq_cat_rec+as.factor(s_etat_rec)+as.factor(csnq_ego_rec)+as.factor(q_franc)+as.factor(originegeo_rec_rec)*as.factor(couplee_rec)+com_apl_sagf_rec+as.factor(nais_3ans_rec)
+             , family = quasibinomial,
+  design = indiv_reg_pd)
+```
+
+
+```{r, echo = FALSE, fig.height=4, fig.width=12}
+ggstats::ggcoef_model(model_interact, exponentiate = TRUE, variable_labels = c( "as.factor(originegeo_rec_rec)" = "Origine"), include = c("as.factor(couplee_rec):as.factor(originegeo_rec_rec)", "as.factor(originegeo_rec_rec)", "as.factor(couplee_rec)"))
+```
+```{r}
+model_interact <- svyglm(as.factor(frott_ap_25) ~ as.factor(couplee_rec)+agenq_cat_rec+as.factor(s_etat_rec)+as.factor(csnq_ego_rec)+as.factor(q_franc)+as.factor(originegeo_rec_rec)*as.factor(q_franc)+com_apl_sagf_rec+as.factor(nais_3ans_rec)
+             , family = quasibinomial,
+  design = indiv_reg_pd)
+```
+
+
+```{r, echo = FALSE, fig.height=4, fig.width=12}
+ggstats::ggcoef_model(model_interact, exponentiate = TRUE, variable_labels = c( "as.factor(originegeo_rec_rec)" = "Origine"), include = c("as.factor(q_franc):as.factor(originegeo_rec_rec)", "as.factor(originegeo_rec_rec)", "as.factor(q_franc)"))
+```

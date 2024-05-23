@@ -60,7 +60,7 @@ if (!exists("indiv")) {
       TRUE ~ NA))
   indiv <- indiv %>% 
     mutate(frott_ap_25 = case_when(
-      agenq >= 25 & s_frott =="Non" & sexee == "Féminin"~ "Pas de frottis", 
+      agenq >= 25 & s_frott =="Non" & sexee == "Féminin" ~ "Pas de frottis", 
       agenq >= 25 & s_frott =="Oui" & sexee == "Féminin"~ "Frottis", 
       TRUE ~ NA))
   indiv <- indiv %>% 
@@ -137,7 +137,9 @@ indiv_dist_pd <- svydesign(ids = indiv_dist$ident_fa, data = indiv_dist, weights
 ### Iris
 if (!exists("bpe_parxy")) {
   bpe_parxy <- read_sas("W:/A2031/GEN_A2031200_DCOMPSAS/BPE2020.sas7bdat")
-  bpe_parxy <- bpe_parxy %>% 
+  bpe_parxy <- bpe_parxy %>%indiv_dist <- indiv_bdd %>% 
+  left_join(teo_dist_ident, by = "ident_fa") %>% 
+  left_join(teo_dist_ident_lib, by = "ident_fa") 
     select(an, an_ref, CAPACITE, depcom, idetab, idservice, iris, 
            lambert_x, lambert_y, QUALITE_XY, SDOM, TYPEQU) %>% 
     filter(TYPEQU %in% c("D101", "D102", "D103", "D104", "D105", "D106", 

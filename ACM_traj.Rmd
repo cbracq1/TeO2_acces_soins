@@ -1,0 +1,231 @@
+---
+title: "ACM_traj_interact"
+author: "Clémence Bracq"
+date: "2024-04-29"
+output:
+  html_notebook: default
+  html_document:
+    df_print: paged
+  pdf_document: default
+editor_options:
+  markdown:
+    wrap: 72
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+```{r libraries, include=FALSE}
+source("Libraries.R")
+```
+
+```{r bases, include=FALSE}
+# source("Base.R")
+```
+
+
+```{r}
+svyquantile(~iris_pct_imchi, indiv_dist_pd, c(.25,.5,.75, 0.995))
+svyquantile(~iris_pct_imchi, indiv_dist_pd, c(.9))
+svyquantile(~iris_pct_imtur, indiv_dist_pd, c(.25,.5,.75))
+svyquantile(~iris_pct_imtur, indiv_dist_pd, c(.99))
+svyquantile(~iris_pct_immi.x, indiv_dist_pd, c(.9))
+svyquantile(~iris_pct_imasie, indiv_dist_pd, c(.25,.5,.75))
+svyquantile(~iris_pct_imal, indiv_dist_pd, c(.25,.5,.75, 0.995))
+
+svyquantile(~lib_dist_min_medge, indiv_dist_pd, c(.25,.5,.75, 0.995))
+
+
+```
+
+```{r}
+
+indiv_test <- indiv_dist %>% filter(originegeo=="Chine"&iris_pct_imchi<=0.5)# 365
+indiv_test <- indiv_dist %>% filter(originegeo=="Chine"&iris_pct_imchi>=5)#101
+indiv_test <- indiv_dist %>% filter(originegeo=="Algérie"&iris_pct_imal>=10)#127
+indiv_test <- indiv_dist %>% filter(originegeo=="Algérie"&iris_pct_imal<=2)#437
+
+
+```
+
+
+```{r select, include=FALSE}
+
+
+
+indiv_dist <- indiv_dist %>% mutate(femme_chinemo = case_when(sexee=="Féminin"&originegeo=="Chine"&nais_3ans=="Pas d'enfants"~"Immigrée Chine pas d'enfants",
+                                                            sexee=="Féminin"&originegeo=="Chine"&nais_3ans=="Enfants mais pas de naissance\n dans les trois dernières années"~"Immigrée Chine enfants plus de 3ans",
+                                                            sexee=="Féminin"&originegeo=="Chine"&nais_3ans=="Naissance dans les trois dernières années"~"Immigrée Chine enfants moins de 3ans",
+                                                            sexee=="Féminin"&originegeo=="Turquie ou Moyen-Orient"&nais_3ans=="Pas d'enfants"~"Immigrée Turquie MO pas d'enfants",
+                                                            sexee=="Féminin"&originegeo=="Turquie ou Moyen-Orient"&nais_3ans=="Enfants mais pas de naissance\n dans les trois dernières années"~"Immigrée Turquie MO enfants plus de 3ans",
+                                                            sexee=="Féminin"&originegeo=="Turquie ou Moyen-Orient"&nais_3ans=="Naissance dans les trois dernières années"~"Immigrée Turquie MO  enfants moins de 3ans",
+                                                            TRUE ~NA))
+indiv_dist <- indiv_dist %>% mutate(langue_chinemo = case_when(originegeo=="Chine"&q_franc=="Sans problème"~"Immigré Chine francophone",
+                                                            originegeo=="Chine"&q_franc=="Très difficilement"~"Immigrée Chine non-francophone",
+                                                            originegeo=="Turquie ou Moyen-Orient"&q_franc=="Sans problème"~"Immigré Turquie MO francophone",
+                                                            originegeo=="Turquie ou Moyen-Orient"&q_franc=="Très difficilement"~"Immigrée Turquie MO non francophone",
+                                                            TRUE ~NA))
+
+indiv_dist <- indiv_dist %>% mutate(lg_chinemo = case_when(originegeo=="Chine"&q_franc=="Sans problème"~"Immigré Chine francophone",
+                                                            originegeo=="Chine"&q_franc=="Très difficilement"~"Immigrée Chine non-francophone",
+                                                            originegeo=="Turquie ou Moyen-Orient"&q_franc=="Sans problème"~"Immigré Turquie MO francophone",
+                                                            originegeo=="Turquie ou Moyen-Orient"&q_franc=="Très difficilement"~"Immigrée Turquie MO non francophone",
+                                                            TRUE ~NA))
+
+indiv_dist <- indiv_dist %>% mutate(age_chinemo = case_when(originegeo=="Chine"&agenq_cat_rec=="Moins de 25 ans"~"Chine moins 25 ans",
+                                                            originegeo=="Chine"&agenq_cat_rec=="Entre 25 et 35 ans"~"Chine 25-35",
+                                                            originegeo=="Chine"&agenq_cat_rec=="Entre 35 et 45 ans"~"Chine 35-45",
+                                                            originegeo=="Chine"&agenq_cat_rec=="Plus de 45 ans"~"Chine plus de 45 ans",
+
+                                                            originegeo=="Turquie ou Moyen-Orient"&agenq_cat_rec=="Moins de 25 ans"~"Turquie MO moins de 25 ans",
+                                                            originegeo=="Turquie ou Moyen-Orient"&agenq_cat_rec=="Entre 25 et 35 ans"~"Turquie MO 25-35",
+                                                             originegeo=="Turquie ou Moyen-Orient"&agenq_cat_rec=="Entre 35 et 45 ans"~"Turquie MO 35-45",
+                                                            originegeo=="Turquie ou Moyen-Orient"&agenq_cat_rec=="Plus de 45 ans"~"Turquie MO plus de 45 ans",
+                                                            TRUE ~NA))
+
+indiv_dist <- indiv_dist %>% mutate(sante_chinemo = case_when(originegeo=="Chine"&s_etat_rec=="Moyen, mauvais ou très mauvais"~"Chine mauvaise santé",
+                                                            originegeo=="Chine"&s_etat_rec=="Très bon ou bon"~"Chine bonne santé",
+
+                                                            originegeo=="Turquie ou Moyen-Orient"&s_etat_rec=="Moyen, mauvais ou très mauvais"~"Turquie MO mauvaise santé",
+                                                            originegeo=="Turquie ou Moyen-Orient"&s_etat_rec=="Très bon ou bon"~"Turquie MO bonne santé",
+                                                            TRUE ~NA))
+
+
+indiv_dist <- indiv_dist %>% mutate(segreg_chinealg = case_when(originegeo=="Chine"&iris_pct_imchi<=0.5~"Chine moins de 0.5% de coethniques",
+                                                            originegeo=="Chine"&iris_pct_imchi>=5~"Chine plus de 5% de coethniques",
+
+                                                            originegeo=="Algérie"&iris_pct_imal<=2~"Algérie moins de 2% de coethniques",
+                                                            originegeo=="Algérie"&iris_pct_imal>=10~"Algérie plus de 10% de coethniques",
+                                                            TRUE ~NA))
+
+
+# Selection var
+acm <- indiv_dist %>% select(s_medeciq_a, s_medeciq_b, s_medeciq_c, s_medeciq_e, s_medeciq_f, s_etat_rec, s_renonc, s_maladi, s_limite, s_medeciq_g, s_ren_queren_spe, s_ren_queren_gen, s_ren_queren_dent, s_ren_queren_medoc, s_ren_queren_lun, femme_chinemo,langue_chinemo,age_chinemo, s_ren_queren_analyses, s_ren_queren_imagerie,  s_rec_ren_gen, s_rec_ren_spe, s_renonc_acm, s_medeciq_acm, s_ren_pqren_cout, s_ren_pqren_attente, s_ren_pqren_qui, s_ren_pqren_papier, s_ren_pqren_peur, s_ren_pqren_tps_loin,l_immi, group1, origine_tous_g2, sexee, csnq_ego, s_secuq, s_secuq_refus, dureeorigine,  sante_chinemo, s_traite, s_traite_peau,  s_medeciq_d, frott_ap_25, segreg_chinealg,  durtotfrm, imc, ident_fa, poidsi) %>% data.frame() %>% 
+  filter(!is.na(s_medeciq_a)&!is.na(s_medeciq_b)&!is.na(s_medeciq_c)&!is.na(s_medeciq_e)&!is.na(s_medeciq_f)&!is.na(s_etat_rec)&s_renonc!="NSP (ne pas lire)"&s_renonc!="Refus (ne pas lire)")
+
+
+#, matches("^iris_pct_im\\w*$"), matches("^dist_min\\w*$"), matches("^com_apl_\\w*$"),  matches("^lib_dist_min\\w*$")
+rownames(acm) <- paste(acm$ident_fa)
+# acm$s_renonc <- acm$s_renonc %>%
+#   fct_recode(
+#     "A renoncé à des soins" = "Oui",
+#     "N'a pas renoncé à des soins" = "Non",
+#     NULL = "Refus (ne pas lire)",
+#     NULL = "NSP (ne pas lire)"
+#   )
+acm_poids <- acm %>% select(-ident_fa) 
+# %>% na.omit()
+acm <- acm_poids %>% select(-poidsi)
+ acm$durtotfrm <- as.numeric(acm$durtotfrm)
+```
+
+```{r, include =FALSE}
+res <- MCA(acm, quali.sup = 8:44, quanti.sup = 45:47, row.w = acm_poids$poidsi)#
+```
+
+
+
+
+
+```{r}
+# library(factoextra)
+# fviz_pca_ind(res, geom = "point", 
+#              title = "Plan factoriel de l'ACM",
+#              # habillage = "quali.var",
+#              # palette = "jco",
+#              repel = TRUE, # Pour éviter le chevauchement des étiquettes
+#              addEllipses = TRUE, # Ajouter des ellipses de concentration
+#              legend.title = "Espèces") # Titre de la légende
+# 
+# fviz_mca_var(res, axes = c(1, 2),
+#   geom = c("point", "text"), label = c("s_etat_rec-Moyen, mauvais ou très mauvais", "s_medeciq_a-s_medeciq_a_Modalité non citée", "s_medeciq_b-s_medeciq_b_Modalité non citée", "s_medeciq_b-s_medeciq_b_Modalité citée", "s_medeciq_c-s_medeciq_c_Modalité non citée", "s_medeciq_c-s_medeciq_c_Modalité citée", "s_medeciq_e-s_medeciq_e_Modalité citée", "s_medeciq_f-s_medeciq_f_Modalité citée", "s_renonc-s_renonc_Oui", "s_medeciq_g-s_medeciq_g_Modalité citée"),
+#   invisible = "none", labelsize = 4, pointsize = 2, col.var = "red",
+#   alpha.var = 1, shape.var = 17, col.quanti.sup = "blue",
+#   col.quali.sup = "darkgreen", col.circle = "grey70",
+#   select.var = list(name = NULL, cos2 = NULL, contrib = NULL),
+#   map = "symmetric", 
+#   jitter = list(what = "label", width = NULL, height = NULL),
+#   repel = TRUE)
+```
+
+
+```{r, echo = FALSE, fig.width = 25}
+res_explor <- explor::prepare_results(res)
+explor::MCA_var_plot(res_explor, xax = 1, yax = 2, var_sup = TRUE, var_sup_choice = c("s_medeciq_g",
+    "s_medeciq_d",  "sante_chinemo", "frott_ap_25"), var_lab_min_contrib = 0, col_var = "Variable",
+    symbol_var = "Type", size_var = NULL, size_range = c(10, 300), labels_size = 10,
+    point_size = 56, transitions = TRUE, labels_positions = NULL, labels_prepend_var = FALSE,
+    xlim = c(-2.47, 3.12), ylim = c(-1.88, 3.71))
+```
+
+### ACM frott
+
+```{r, include =FALSE}
+indiv_dist <- indiv_dist %>% mutate(femme_chinemo = case_when(sexee=="Féminin"&originegeo=="Chine"&nais_3ans=="Pas d'enfants"~"Immigrée Chine pas d'enfants",
+                                                            sexee=="Féminin"&originegeo=="Chine"&nais_3ans=="Enfants mais pas de naissance\n dans les trois dernières années"~"Immigrée Chine enfants plus de 3ans",
+                                                            sexee=="Féminin"&originegeo=="Chine"&nais_3ans=="Naissance dans les trois dernières années"~"Immigrée Chine enfants moins de 3ans",
+                                                            sexee=="Féminin"&originegeo=="Turquie ou Moyen-Orient"&nais_3ans=="Pas d'enfants"~"Immigrée Turquie MO pas d'enfants",
+                                                            sexee=="Féminin"&originegeo=="Turquie ou Moyen-Orient"&nais_3ans=="Enfants mais pas de naissance\n dans les trois dernières années"~"Immigrée Turquie MO enfants plus de 3ans",
+                                                            sexee=="Féminin"&originegeo=="Turquie ou Moyen-Orient"&nais_3ans=="Naissance dans les trois dernières années"~"Immigrée Turquie MO  enfants moins de 3ans",
+                                                            TRUE ~NA))
+indiv_dist <- indiv_dist %>% mutate(langue_chinemo = case_when(originegeo=="Chine"&q_franc=="Sans problème"~"Immigré Chine francophone",
+                                                            originegeo=="Chine"&q_franc=="Très difficilement"~"Immigrée Chine non-francophone",
+                                                            originegeo=="Turquie ou Moyen-Orient"&q_franc=="Sans problème"~"Immigré Turquie MO francophone",
+                                                            originegeo=="Turquie ou Moyen-Orient"&q_franc=="Très difficilement"~"Immigrée Turquie MO non francophone",
+                                                            TRUE ~NA))
+
+indiv_dist <- indiv_dist %>% mutate(age_chinemo = case_when(originegeo=="Chine"&q_franc=="Sans problème"~"Immigré Chine francophone",
+                                                            originegeo=="Chine"&q_franc=="Très difficilement"~"Immigrée Chine non-francophone",
+                                                            originegeo=="Turquie ou Moyen-Orient"&q_franc=="Sans problème"~"Immigré Turquie MO francophone",
+                                                            originegeo=="Turquie ou Moyen-Orient"&q_franc=="Très difficilement"~"Immigrée Turquie MO non francophone",
+                                                            TRUE ~NA))
+
+indiv_dist <- indiv_dist %>% mutate(age_chinemo = case_when(originegeo=="Chine"&agenq_cat_rec=="Moins de 25 ans"~"Chine moins 25 ans",
+                                                            originegeo=="Chine"&agenq_cat_rec=="Entre 25 et 35 ans"~"Chine 25-35",
+                                                            originegeo=="Chine"&agenq_cat_rec=="Entre 35 et 45 ans"~"Chine 35-45",
+                                                            originegeo=="Chine"&agenq_cat_rec=="Plus de 45 ans"~"Chine plus de 45 ans",
+
+                                                            originegeo=="Turquie ou Moyen-Orient"&agenq_cat_rec=="Moins de 25 ans"~"Turquie MO moins de 25 ans",
+                                                            originegeo=="Turquie ou Moyen-Orient"&agenq_cat_rec=="Entre 25 et 35 ans"~"Turquie MO 25-35",
+                                                             originegeo=="Turquie ou Moyen-Orient"&agenq_cat_rec=="Entre 35 et 45 ans"~"Turquie MO 35-45",
+                                                            originegeo=="Turquie ou Moyen-Orient"&agenq_cat_rec=="Plus de 45 ans"~"Turquie MO plus de 45 ans",
+                                                            TRUE ~NA))
+
+indiv_dist <- indiv_dist %>% mutate(sante_chinemo = case_when(originegeo=="Chine"&s_etat_rec=="Mauvais ou très mauvais"~"Chine mauvaise santé",
+                                                            originegeo=="Chine"&s_etat_rec=="Très bon, bon ou moyen"~"Chine bonne santé",
+
+                                                            originegeo=="Turquie ou Moyen-Orient"&s_etat_rec=="Mauvais ou très mauvais"~"Turquie MO mauvaise santé",
+                                                            originegeo=="Turquie ou Moyen-Orient"&s_etat_rec=="Très bon, bon ou moyen"~"Turquie MO bonne santé",
+                                                            TRUE ~NA))
+
+acm_frott <- indiv_dist %>% select(frott_ap_25, s_medeciq_d, s_medeciq_a,  s_medeciq_f, s_etat_rec, s_medeciq_b, s_medeciq_c, s_medeciq_e,s_maladi, s_limite, s_medeciq_g, s_rec_ren_gen, s_rec_ren_spe, s_ren_pqren_cout, s_ren_pqren_attente, s_ren_pqren_qui, s_ren_pqren_papier, s_ren_pqren_peur, s_ren_pqren_tps_loin, s_ren_queren_dent, s_ren_queren_medoc, s_ren_queren_lun, s_ren_queren_analyses, s_ren_queren_imagerie,  l_immi, group1, origine_tous_g2,  csnq_ego, femme_chinemo, langue_chinemo, age_chinemo, sante_chinemo,s_secuq, s_secuq_refus, dureeorigine,  s_traite, s_traite_peau,  agenq, durtotfrm, imc, ident_fa, poidsi) %>% data.frame() %>% #, matches("^iris_pct_im\\w*$"), matches("^dist_min\\w*$"), matches("^com_apl_\\w*$"),  matches("^lib_dist_min\\w*$")
+  filter(!is.na(frott_ap_25)&!is.na(s_medeciq_d)&!is.na(s_medeciq_a)&!is.na(s_medeciq_b)&!is.na(s_medeciq_c)&!is.na(s_medeciq_e)&!is.na(s_medeciq_f))
+rownames(acm_frott) <- paste(acm_frott$ident_fa)
+# acm_frott$s_renonc <- acm_frott$s_renonc %>%
+#   fct_recode(
+#     "A renoncé à des soins" = "Oui",
+#     "N'a pas renoncé à des soins" = "Non",
+#     NULL = "Refus (ne pas lire)",
+#     NULL = "NSP (ne pas lire)"
+#   )
+acm_frott_poids <- acm_frott %>% select(-ident_fa) 
+# %>% na.omit()
+acm_frott <- acm_frott_poids %>% select(-poidsi)
+acm_frott$durtotfrm<- as.numeric(acm_frott$durtotfrm)
+
+```
+
+
+```{r, include =FALSE}
+res_frott <- MCA(acm_frott, quali.sup = 5:37, quanti.sup = 38:40, row.w = acm_frott_poids$poidsi)
+```
+
+```{r, echo = FALSE, fig.width = 25}
+res_explor <- explor::prepare_results(res_frott)
+explor::MCA_var_plot(res_explor, xax = 1, yax = 2, var_sup = TRUE, var_sup_choice = c("s_medeciq_g",
+    "s_medeciq_d",  "age_chinemo", "frott_ap_25", "femme_chinemo", "langue_chinemo", "age_chinemo", "sante_chinemo"), var_lab_min_contrib = 0, col_var = "Variable",
+    symbol_var = "Type", size_var = NULL, size_range = c(10, 300), labels_size = 10,
+    point_size = 56, transitions = TRUE, labels_positions = NULL, labels_prepend_var = FALSE,
+    xlim = c(-2.47, 3.12), ylim = c(-1.88, 3.71))
+```

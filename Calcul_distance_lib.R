@@ -59,7 +59,7 @@ dist_min <- function(typequ){
   distance_minimale_individu <- apply(distances_minimales, 1, min)
   return(distance_minimale_individu)}
 
-teo_xy_sf$lib_medge_1km <- etab_moins_de(1000, "D201")#doute sur le fait que les colonnes restent bien dans le même ordre
+teo_xy_sf$lib_medge_1km <- etab_moins_de(1000, "D201")
 teo_xy_sf$lib_dist_min_medge <- dist_min("D201")
 teo_xy_sf$lib_cardio_1km <- etab_moins_de(1000, "D202")
 teo_xy_sf$lib_dist_min_cardio <- dist_min("D202")
@@ -89,7 +89,7 @@ teo_xy_sf$lib_labo_1km <- etab_moins_de(1000, "D302")
 teo_xy_sf$lib_dist_min_labo <- dist_min("D302")
 
 
-teo_dist <- teo_xy_sf %>% select(IDENT_MEN, matches("^lib_dist_min_\\w*$"), matches("_5km$"))
+teo_dist <- teo_xy_sf %>% select(IDENT_MEN, matches("^lib_dist_min_\\w*$"), matches("_1km$"))
 
 
 indiv_ident <- indiv %>% select(ident_fa)

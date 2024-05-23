@@ -13,9 +13,58 @@ editor_options:
 ---
 
 
+
+
 ```{r, echo = FALSE}
-ggsurvey(indiv_graphe_pd) +
-  aes(x = originegeo_rec, fill = frott_ap_25) +
+indiv$s_medeciq_g_rec <- indiv$s_medeciq_g %>% 
+  fct_recode(
+    "Refus ou ne sait pas" = "-1",
+    "Refus ou ne sait pas" = "-2"
+  )  
+
+
+indiv$s_etat2 <- indiv$s_etat %>%
+  fct_recode(
+    "Refus ou ne sait pas" = "Refus (ne pas lire)",
+    "Refus ou ne sait pas" = "NSP (ne pas lire)"
+  )
+indiv$s_medeciq_a_rec <- indiv$s_medeciq_a %>%
+  fct_explicit_na("Refus ou ne sait pas")
+indiv$s_medeciq_b_rec <- indiv$s_medeciq_b %>%
+  fct_explicit_na("Refus ou ne sait pas")
+indiv$s_medeciq_c_rec <- indiv$s_medeciq_c %>%
+  fct_explicit_na("Refus ou ne sait pas")
+indiv$s_medeciq_e_rec <- indiv$s_medeciq_e %>%
+  fct_explicit_na("Refus ou ne sait pas")
+indiv$s_medeciq_f_rec <- indiv$s_medeciq_f %>%
+  fct_explicit_na("Refus ou ne sait pas")
+
+
+indiv <- indiv %>% 
+  mutate(originegeo2 = case_when(group1=="Immigré (né étranger à l'étranger y compris réintégrés)"& originegeo_rec!="Espagne ou talie" ~originegeo_rec,
+                                 group1=="Population non immigrée ni originaire d'Outre-mer et descendant de deux parents non immigrés et non originaires d'Outre-mer"~"France métropolitaine, non G2 Outre-mer ou immigré",
+                                 originegeo_rec=="Espagne ou talie"~"Espagne ou Italie",
+                                 group1!="Population non immigrée ni originaire d'Outre-mer et descendant de deux parents non immigrés et non originaires d'Outre-mer"& group1!="Immigré (né étranger à l'étranger y compris réintégrés)"~group1,
+                                 TRUE~group1))
+
+indiv$originegeo2 <- factor(indiv$originegeo2, levels = c("France métropolitaine, non G2 Outre-mer ou immigré", "Originaire de l'Outre-mer", "Descendant G2 d'un ou deux immigré-s", "Descendant G2 d'un ou deux originaire-s de l'Outre-mer", "Espagne ou Italie", "Portugal", "Autres pays de l'UE27", "Autres pays d'Europe", "Maroc ou Tunisie", "Algérie",  "Afrique guinéenne ou centrale", "Afrique sahélienne", "Autres pays d'Afrique", "Turquie ou Moyen-Orient", "Chine", "Asie du Sud-Est", "Autres pays d'Asie", "Autre pays"))
+
+indiv_pd <-svydesign(ids = indiv$ident_fa, data = indiv, weights = indiv$poidsi)
+
+indiv_femme <- indiv %>% filter(sexee=="Féminin")
+indiv_femme$s_medeciq_d_rec <- indiv_femme$s_medeciq_d %>%
+  fct_explicit_na("Refus ou ne sait pas")
+indiv_f_pd <-svydesign(ids = indiv_femme$ident_fa, data = indiv_femme, weights = indiv_femme$poidsi)
+
+indiv_frott <- indiv_femme %>% filter(agenq>= 25) 
+indiv_frott$frott_ap_25 <- indiv_frott$frott_ap_25 %>%
+  fct_explicit_na("Refus ou ne sait pas")
+indiv_frott_pd <-svydesign(ids = indiv_frott$ident_fa, data = indiv_frott, weights = indiv_frott$poidsi)
+```
+
+```{r, echo = FALSE}
+ggsurvey(indiv_frott_pd) +
+  aes(x = originegeo2, fill = frott_ap_25) +
   geom_bar(position = "fill") +
   scale_fill_hue(direction = 1) +
   labs(
@@ -23,18 +72,29 @@ ggsurvey(indiv_graphe_pd) +
     y = "Proportion",
     fill = "Dans les 3 dernières années..."
   ) +
-  coord_flip() +
-    theme(     legend.position = "bottom",  legend.box = "horizontal"   ) +
-  theme_minimal()
+  coord_flip() + scale_fill_manual(values=c("#40B330", "#FF4040", "#999999"))+
+    theme(legend.position = "bottom")
 ```
 
 
 ```{r, echo = FALSE}
-indiv_femme <- indiv %>% filter(sexee=="Féminin")
-indiv_f_pd <-svydesign(ids = indiv_femme$ident_fa, data = indiv_femme, weights = indiv_femme$poidsi)
-
 ggsurvey(indiv_f_pd) +
-  aes(x = originegeo_rec, fill = s_medeciq_d) +
+  aes(x = originegeo2, fill = s_medeciq_d_rec) +
+  geom_bar(position = "fill") +
+  # scale_fill_hue(direction = 1) +
+  labs(
+    x = NULL,
+    y = "Proportion",
+    fill = "Recours au gynécologue"
+  ) +
+  coord_flip() + scale_fill_manual(values=c( "#FF4040","#40B330", "#999999"))+
+  theme(legend.position = "bottom") 
+```
+
+```{r, echo = FALSE}
+
+ggsurvey(indiv_frott_pd) +
+  aes(x = originegeo2, fill = s_medeciq_d_rec) +
   geom_bar(position = "fill") +
   scale_fill_hue(direction = 1) +
   labs(
@@ -42,60 +102,44 @@ ggsurvey(indiv_f_pd) +
     y = "Proportion",
     fill = "Recours au gynécologue"
   ) +
-  coord_flip() +
-  theme(legend.position = "bottom") +
-  theme_minimal()
+  coord_flip() +scale_fill_manual(values=c( "#FF4040","#40B330", "#999999"))+
+  theme(legend.position = "bottom") 
 ```
 
-```{r, echo = FALSE}
 
-ggsurvey(indiv_graphe_pd) +
-  aes(x = originegeo_rec, fill = s_medeciq_d) +
+```{r, echo = FALSE}
+ggsurvey(indiv_pd) +
+  aes(x = originegeo2, fill = s_medeciq_g_rec) +
   geom_bar(position = "fill") +
-  scale_fill_hue(direction = 1) +
+  # scale_fill_hue(direction = 1) +
   labs(
     x = NULL,
     y = "Proportion",
-    fill = "Recours au gynécologue pour les plus de 25 ans"
-  ) +
+    fill = "Pas de recours :"
+  ) + scale_fill_manual(values=c("#999999", "#FF4040", "#40B330"))+
   coord_flip() +
-  theme(legend.position = "bottom") +
-  theme_minimal()
+  theme(legend.position = "bottom")
 ```
 
 ```{r, echo = FALSE}
 ggsurvey(indiv_pd) +
-  aes(x = originegeo_rec, fill = s_medeciq_g) +
+  aes(x = originegeo2, fill = s_medeciq_a_rec) +
   geom_bar(position = "fill") +
-  scale_fill_hue(direction = 1) +
-  labs(
-    x = NULL,
-    y = "Proportion",
-    fill = "Pas de recours"
-  ) +
-  coord_flip() +
-  theme(legend.position = "bottom") +
-  theme_minimal()
-```
-```{r, echo = FALSE}
-ggsurvey(indiv_pd) +
-  aes(x = originegeo_rec, fill = s_medeciq_a) +
-  geom_bar(position = "fill") +
-  scale_fill_hue(direction = 1) +
+  # scale_fill_hue(direction = 1) +
   labs(
     x = NULL,
     y = "Proportion",
     fill = "Recours au généraliste"
-  ) +
+  ) + scale_fill_manual(values=c( "#FF4040", "#40B330", "#999999"))+
   coord_flip() +
-  theme(legend.position = "bottom") +
-  theme_minimal()
+  theme(legend.position = "bottom") 
+  # theme_minimal()
 ```
 
 
 ```{r, echo = FALSE}
 ggsurvey(indiv_pd) +
-  aes(x = originegeo_rec, fill = s_medeciq_b) +
+  aes(x = originegeo2, fill = s_medeciq_b_rec) +
   geom_bar(position = "fill") +
   scale_fill_hue(direction = 1) +
   labs(
@@ -103,15 +147,14 @@ ggsurvey(indiv_pd) +
     y = "Proportion",
     fill = "Recours au dentiste"
   ) +
-  coord_flip() +
-  theme(legend.position = "bottom") +
-  theme_minimal()
+  coord_flip() + scale_fill_manual(values=c( "#FF4040", "#40B330", "#999999"))+
+  theme(legend.position = "bottom") 
 ```
 
 
 ```{r, echo = FALSE}
 ggsurvey(indiv_pd) +
-  aes(x = originegeo_rec, fill = s_medeciq_c) +
+  aes(x = originegeo2, fill = s_medeciq_c_rec) +
   geom_bar(position = "fill") +
   scale_fill_hue(direction = 1) +
   labs(
@@ -119,33 +162,31 @@ ggsurvey(indiv_pd) +
     y = "Proportion",
     fill = "Recours à l'ophtalmologue"
   ) +
-  coord_flip() +
-  theme(legend.position = "bottom") +
-  theme_minimal()
+  coord_flip() + scale_fill_manual(values=c( "#FF4040", "#40B330", "#999999"))+
+  theme(legend.position = "bottom") 
 ```
 
 
 ```{r, echo = FALSE}
 
 ggsurvey(indiv_pd) +
-  aes(x = originegeo_rec, fill = s_medeciq_e) +
+  aes(x = originegeo2, fill = s_medeciq_e_rec) +
   geom_bar(position = "fill") +
   scale_fill_hue(direction = 1) +
   labs(
     x = NULL,
     y = "Proportion",
     fill = "Recours au psychologue ou psychiatre"
-  ) +
+  ) + scale_fill_manual(values=c( "#FF4040", "#40B330", "#999999"))+
   coord_flip() +
-  theme(legend.position = "bottom") +
-  theme_minimal()
+  theme(legend.position = "bottom")
 ```
 
 
 ```{r, echo = FALSE}
 
 ggsurvey(indiv_pd) +
-  aes(x = originegeo_rec, fill = s_medeciq_f) +
+  aes(x = originegeo2, fill = s_medeciq_f_rec) +
   geom_bar(position = "fill") +
   scale_fill_hue(direction = 1) +
   labs(
@@ -153,10 +194,11 @@ ggsurvey(indiv_pd) +
     y = "Proportion",
     fill = "Recours à un autre spécialiste"
   ) +
-  coord_flip() +
-  theme(legend.position = "bottom") +
-  theme_minimal()
+  coord_flip() + scale_fill_manual(values=c( "#FF4040", "#40B330", "#999999"))+
+  theme(legend.position = "bottom") 
 ```
+
+
 ```{r}
 
 ggsurvey(indiv_pd) +
@@ -191,7 +233,7 @@ ggsurvey(indiv_pd) +
 
 ```{r, echo  = FALSE}
 ggsurvey(indiv_pd) +
-  aes(x = originegeo_rec, fill = s_renonc) +
+  aes(x = originegeo2, fill = s_renonc_rec) +
   geom_bar(position = "fill") +
   scale_fill_hue(direction = 1) +
   labs(
@@ -199,25 +241,24 @@ ggsurvey(indiv_pd) +
     y = "Proportion",
     fill = "Renoncement"
   ) +
-  coord_flip() +
-  theme(legend.position = "bottom") +
-  theme_minimal()
+  coord_flip() + scale_fill_manual(values=c( "#FF4040", "#40B330", "#999999"))+
+  theme(legend.position = "bottom") 
 ```
 
 
 ```{r, echo = FALSE}
 ggsurvey(indiv_pd) +
-  aes(x = originegeo_rec, fill = s_etat) +
+  aes(x = originegeo2, fill = s_etat2) +
   geom_bar(position = "fill") +
-  scale_fill_hue(direction = 1) +
+  # scale_fill_hue(direction = 1) +
   labs(
     x = NULL,
     y = "Proportion",
     fill = "Etat de santé perçu"
   ) +
-  coord_flip() +
-  theme(legend.position = "bottom") +
-  theme_minimal()
+  coord_flip() +scale_fill_manual(values=c( "#09622A","#519D54",  "#EAC34B", "#D94602", "#9C0824", "#999999"))+
+  theme(legend.position = "bottom") 
+  # theme_minimal()
 ```
 
 ```{r, echo =FALSE}
