@@ -21,7 +21,8 @@ indiv$s_medeciq_g_rec <- indiv$s_medeciq_g %>%
     "Refus ou ne sait pas" = "-1",
     "Refus ou ne sait pas" = "-2"
   )  
-
+indiv$s_traite_rec_rec <- indiv$s_traite_rec %>%
+  fct_explicit_na("Refus ou ne sait pas")
 
 indiv$s_etat2 <- indiv$s_etat %>%
   fct_recode(
@@ -49,6 +50,12 @@ indiv <- indiv %>%
 
 indiv$originegeo2 <- factor(indiv$originegeo2, levels = c("France métropolitaine, non G2 Outre-mer ou immigré", "Originaire de l'Outre-mer", "Descendant G2 d'un ou deux immigré-s", "Descendant G2 d'un ou deux originaire-s de l'Outre-mer", "Espagne ou Italie", "Portugal", "Autres pays de l'UE27", "Autres pays d'Europe", "Maroc ou Tunisie", "Algérie",  "Afrique guinéenne ou centrale", "Afrique sahélienne", "Autres pays d'Afrique", "Turquie ou Moyen-Orient", "Chine", "Asie du Sud-Est", "Autres pays d'Asie", "Autre pays"))
 
+
+indiv <-  indiv %>% 
+  mutate(s_traite_peau=case_when(s_compor_c_corrig=="Modalité citée"|s_compor_d_corrig=="Modalité citée"~"Couleur de peau",
+                                  s_traite_rec_rec =="Oui"&s_compor_c_corrig!="Modalité citée"&s_compor_d_corrig!="Modalité citée"~"Autre motif",
+                                  s_traite_rec_rec=="Non"~"Pas de discrimination",
+                                  TRUE~"Refus ou ne sait pas"))
 indiv_pd <-svydesign(ids = indiv$ident_fa, data = indiv, weights = indiv$poidsi)
 
 indiv_femme <- indiv %>% filter(sexee=="Féminin")
@@ -120,6 +127,49 @@ ggsurvey(indiv_pd) +
   coord_flip() +
   theme(legend.position = "bottom")
 ```
+
+```{r}
+tb <- lprop(svytable(~immig+s_medeciq_g_rec, indiv_pd))
+tb <- as.data.frame(tb) 
+
+
+tb %>%
+ filter(!(immig %in% c("Ensemble"
+))) %>% 
+ filter(s_medeciq_g_rec %in% "Modalité citée") %>%
+ ggplot() +
+  aes(x = immig, weight = Freq) +
+  geom_bar(fill = "#112446") +
+  labs(
+    x = NULL,
+    y = "Proportion de non-recours"
+  ) +
+  theme(axis.text.x=element_text(angle=45, hjust=0.9))#+geom_hline(yintercept=5.2, linetype="dashed", color = "red")+annotate("text", x=13.5, y=6, label="Non-immigrés", color = "red", size=4.5)
+```
+
+```{r}
+tb <- lprop(svytable(~originegeo2+s_medeciq_g_rec, indiv_pd))
+tb <- as.data.frame(tb) 
+tb2 <- sort(tb$Freq, decreasing=FALSE)
+
+
+tb %>%
+ filter(!(originegeo2 %in% c("France métropolitaine, non G2 Outre-mer ou immigré", "Originaire de l'Outre-mer", 
+"Descendant G2 d'un ou deux immigré-s", "Descendant G2 d'un ou deux originaire-s de l'Outre-mer", "Ensemble"
+))) %>% 
+ filter(s_medeciq_g_rec %in% "Modalité citée") %>%
+ ggplot() +
+  aes(x = originegeo2, weight = Freq) +
+  geom_bar(fill = "#112446") +
+  labs(
+    x = NULL,
+    y = "Proportion de non-recours"
+  ) +
+  theme(axis.text.x=element_text(angle=45, hjust=0.9))+geom_hline(yintercept=5.2, linetype="dashed", color = "red")+annotate("text", x=13.5, y=6, label="Non-immigrés", color = "red", size=4.5)
+```
+
+
+
 
 ```{r, echo = FALSE}
 ggsurvey(indiv_pd) +
@@ -200,20 +250,49 @@ ggsurvey(indiv_pd) +
 
 
 ```{r}
-
 ggsurvey(indiv_pd) +
-  aes(x = originegeo_rec, fill = s_traite) +
-  geom_bar(position = "fill") +
-  scale_fill_hue(direction = 1) +
-  labs(
-    x = NULL,
-    y = "Proportion",
-    fill = "Discrimination par personnel médical"
-  ) +
-  coord_flip() +
-  theme(legend.position = "bottom") +
-  theme_minimal()
+    aes(x = originegeo2, fill = s_traite_rec_rec) +
+    geom_bar(position = "fill") +
+    scale_fill_hue(direction = 1) +
+    labs(
+        x = NULL,
+        y = "Proportion",
+        fill = "Discrimination par personnel médical"
+    ) +
+    coord_flip() + scale_fill_manual(values=c( "#FF4040", "#40B330", "#999999"))+
+    theme(legend.position = "bottom") +
+    theme_minimal()
 ```
+
+```{r}
+ggsurvey(indiv_pd) +
+    aes(x = originegeo2, fill = s_traite_peau) +
+    geom_bar(position = "fill") +
+    scale_fill_hue(direction = 1) +
+    labs(
+        x = NULL,
+        y = "Proportion",
+        fill = "Discrimination par personnel médical"
+    ) +
+    coord_flip() + scale_fill_manual(values=c( "#FF4040", "#40B330", "#999999"))+
+    theme(legend.position = "bottom") +
+    theme_minimal()
+```
+
+```{r}
+ggsurvey(indiv_pd) +
+    aes(x = originegeo2, fill = s_traite_peau) +
+    geom_bar(position = "fill") +
+    scale_fill_hue(direction = 1) +
+    labs(
+        x = NULL,
+        y = "Proportion",
+        fill = "Discrimination par personnel médical"
+    ) +
+    coord_flip() + scale_fill_manual(values=c( "#D94602","#9C0824", "#40B330", "#999999"))+
+    theme(legend.position = "bottom") 
+```
+
 
 
 ```{r, echo = FALSE, fig.width=10}

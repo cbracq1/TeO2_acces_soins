@@ -1,0 +1,69 @@
+.Rproj.user
+.Rhistory
+.RData
+.Ruserdata
+/.RDataTmp
+/.RDataTmp1
+/Acces_soins_immigres.Rproj
+/accessibilite.nb.html
+/accessibilite.Rmd
+/Ancien docs/accessibilite.nb.html
+/Ancien docs/accessibilite.Rmd
+/Ancien docs/Base.R
+/Ancien docs/graphes.R
+/Ancien docs/graphes_finaux_dist.R
+/Ancien docs/Iris.nb.html
+/Ancien docs/Iris.pdf
+/Ancien docs/Iris.Rmd
+/Ancien docs/iris_cat.nb.html
+/Ancien docs/iris_cat.Rmd
+/Ancien docs/recours.html
+/Ancien docs/recours.nb.html
+/Ancien docs/recours.Rmd
+/Ancien docs/segreg.nb.html
+/Ancien docs/segreg.Rmd
+/Ancien docs/stats desc distance.nb.html
+/Ancien docs/stats desc distance.Rmd
+/Ancien docs/Stats_desc_immig_qtier_interaction.nb.html
+/Ancien docs/Stats_desc_immig_qtier_interaction.Rmd
+/Ancien docs/stats-desc-distance.knit.md
+/Ancien docs/stats-desc-distance.Rmd
+/Ancien docs/tab_OR_recours.R
+/distances_etab.parquet
+/distances_lib.parquet
+/Figures/apl_pop.png
+/Figures/dist_mg_group1.png
+/Figures/dist_mg_group1_30000.png
+/Figures/dist_mg_immi.png
+/Figures/dist_mg_immi_30000.png
+/Figures/dist_pop.png
+/Figures/dist_urg_group1_30000.png
+/Figures/dist_urg_immi_30000.png
+/Figures/dist_urg_pop.png
+/Figures/group1_dist_urg.png
+/Figures/l_immi_g2.png
+/Figures/Premiers résultats modélisation.png
+/Figures/quartier_dist_urg.png
+/Figures/segreg_afmag.png
+/Figures/segreg_afmag_2.png
+/Figures/segreg_UE.png
+/Figures/segreg_UE_2.png
+/Figures/tab_recours.html
+/Iris.Rmd
+/Libraries.R
+/Memoire_final.nb.html
+/Memoire_final_files/figure-latex/unnamed-chunk-4-1.pdf
+/recours.html
+/recours.nb.html
+/recours.Rmd
+/Reg.nb.html
+/Reg.Rmd
+/Reg_accessibilite.nb.html
+/Reg_accessibilite.Rmd
+/Reg_accessibilite_newtuu.nb.html
+/Reg_accessibilite_newtuu.Rmd
+/reg1.html
+/stats desc distance.nb.html
+/stats desc distance.Rmd
+/tab_recours.html
+/Thumbs.db

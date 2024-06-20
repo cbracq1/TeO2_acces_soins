@@ -59,6 +59,13 @@ ggsurvey(indiv_pd) +
                                                            "#6baed6", "#99d8c9", "#33a02c", "#74c476", "#fed976", "#d9d9d9","#bdbdbd"))+
    coord_flip() 
 
+indiv_f <- indiv %>% filter(sexee=="Féminin")
+indiv_f_pd <-svydesign(ids = indiv_f$ident_fa, data = indiv_f, weights = indiv_f$poidsi)
+ggsurvey(indiv_f_pd) +
+  aes(x = originegeo2, fill = contraception) +
+  geom_bar(position = "fill") + scale_fill_manual(values=c("#f768a1", "#fb6a4a", "#c994c7", "#08519c", 
+                                                           "#6baed6", "#99d8c9", "#33a02c", "#74c476", "#fed976", "#d9d9d9","#bdbdbd"))+
+  coord_flip() 
 
 indiv_frott <- indiv %>% filter(sexee=="Féminin") %>% filter(agenq>=25)
 indiv_frott_pd <-svydesign(ids = indiv_frott$ident_fa, data = indiv_frott, weights = indiv_frott$poidsi)

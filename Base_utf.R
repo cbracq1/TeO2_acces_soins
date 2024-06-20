@@ -175,3 +175,5 @@ iris <- BDD_ctx %>% select(code_iris_original_TeO2, matches("^iris_pct_im\\w*$")
 
 iris2 <- iris %>% right_join(indiv_dist) 
 
+rm(bpe_parxy, teo_dist_ident, teo_dist_ident_lib, BDD_ctx)
+gc()

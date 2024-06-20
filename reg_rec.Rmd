@@ -277,7 +277,7 @@ indiv_dist$agenq_cat_rec <- indiv_dist$agenq_cat %>%
 
 indiv_dist<- indiv_dist %>% 
   mutate(originegeo_rec2 = case_when(originegeo_rec=="France métropolitaine"~group1,
-                                     TRUE~originegeo_rec))
+                                     TRUE~ originegeo_rec))
 indiv_dist$originegeo_rec2_rec <- indiv_dist$originegeo_rec2 %>%
   fct_recode(
     "France métropolitaine" = "Immigré (né étranger à l'étranger y compris réintégrés)",
@@ -444,6 +444,44 @@ indiv_reg_gyn <- indiv_reg %>%
 indiv_reg_gyn_pd <-svydesign(ids = indiv_reg_gyn$ident_fa, data = indiv_reg_gyn, weights = indiv_reg_gyn$poidsi)
 
 ```
+
+
+## Modèle avec seulmeent originegeo2
+```{r}
+modelg <- svyglm(as.factor(s_medeciq_g) ~   originegeo2 
+                ,family = quasibinomial,
+                design = indiv_reg_pd)
+modela <- svyglm(as.factor(s_medeciq_a) ~   originegeo2
+                ,family = quasibinomial,
+                design = indiv_reg_pd)
+modelb <- svyglm(as.factor(s_medeciq_b) ~   originegeo2
+                ,family = quasibinomial,
+                design = indiv_reg_pd)
+modelc <- svyglm(as.factor(s_medeciq_c) ~   originegeo2
+                ,family = quasibinomial,
+                design = indiv_reg_pd)
+modeld <- svyglm(as.factor(s_medeciq_d) ~originegeo2 
+             , family = quasibinomial,
+  design = indiv_reg_gyn_pd)
+modele <- svyglm(as.factor(s_medeciq_e) ~   originegeo2
+                ,family = quasibinomial,
+                design = indiv_reg_pd)
+modelf <- svyglm(as.factor(s_medeciq_f) ~   originegeo2
+                ,family = quasibinomial,
+                design = indiv_reg_pd)
+modelr <- svyglm(as.factor(s_renonc) ~   originegeo2 
+                ,family = quasibinomial,
+                design = indiv_reg_pd)
+
+model_frott <- svyglm(as.factor(frott_ap_25) ~ originegeo2
+             , family = quasibinomial,
+  design = indiv_reg_frott_pd)
+```
+
+```{r}
+ggstats::ggcoef_compare(list("Généraliste"=modela , "Dentiste" =modelb, "Ophtalmo."=modelc,  "Psy."= modele, "Autre spé." =modelf, "Gynéco."=modeld, "Frottis"=model_frott, "Non-rec." = modelg, "Renonc." = modelr), type = "faceted", exponentiate = TRUE, variable_labels = c("originegeo2" = "Origine"))#"s_traite_rec" = "Discrimination par \nprofessionnel de santé",
+```
+
 
 ## Modèle de base
 

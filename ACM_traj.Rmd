@@ -21,7 +21,7 @@ source("Libraries.R")
 ```
 
 ```{r bases, include=FALSE}
-# source("Base.R")
+ source("Base_utf.R")
 ```
 
 
@@ -51,9 +51,6 @@ indiv_test <- indiv_dist %>% filter(originegeo=="Algérie"&iris_pct_imal<=2)#437
 
 
 ```{r select, include=FALSE}
-
-
-
 indiv_dist <- indiv_dist %>% mutate(femme_chinemo = case_when(sexee=="Féminin"&originegeo=="Chine"&nais_3ans=="Pas d'enfants"~"Immigrée Chine pas d'enfants",
                                                             sexee=="Féminin"&originegeo=="Chine"&nais_3ans=="Enfants mais pas de naissance\n dans les trois dernières années"~"Immigrée Chine enfants plus de 3ans",
                                                             sexee=="Féminin"&originegeo=="Chine"&nais_3ans=="Naissance dans les trois dernières années"~"Immigrée Chine enfants moins de 3ans",
@@ -199,16 +196,16 @@ indiv_dist <- indiv_dist %>% mutate(sante_chinemo = case_when(originegeo=="Chine
                                                             originegeo=="Turquie ou Moyen-Orient"&s_etat_rec=="Très bon, bon ou moyen"~"Turquie MO bonne santé",
                                                             TRUE ~NA))
 
-acm_frott <- indiv_dist %>% select(frott_ap_25, s_medeciq_d, s_medeciq_a,  s_medeciq_f, s_etat_rec, s_medeciq_b, s_medeciq_c, s_medeciq_e,s_maladi, s_limite, s_medeciq_g, s_rec_ren_gen, s_rec_ren_spe, s_ren_pqren_cout, s_ren_pqren_attente, s_ren_pqren_qui, s_ren_pqren_papier, s_ren_pqren_peur, s_ren_pqren_tps_loin, s_ren_queren_dent, s_ren_queren_medoc, s_ren_queren_lun, s_ren_queren_analyses, s_ren_queren_imagerie,  l_immi, group1, origine_tous_g2,  csnq_ego, femme_chinemo, langue_chinemo, age_chinemo, sante_chinemo,s_secuq, s_secuq_refus, dureeorigine,  s_traite, s_traite_peau,  agenq, durtotfrm, imc, ident_fa, poidsi) %>% data.frame() %>% #, matches("^iris_pct_im\\w*$"), matches("^dist_min\\w*$"), matches("^com_apl_\\w*$"),  matches("^lib_dist_min\\w*$")
+acm_frott <- indiv_dist %>% select(frott_ap_25, s_medeciq_d, s_medeciq_a,  s_medeciq_f, s_etat_rec, s_medeciq_b, s_medeciq_c, s_medeciq_e,s_maladi, s_limite, s_medeciq_g, s_renonc, s_rec_ren_gen, s_rec_ren_spe, s_ren_pqren_cout, s_ren_pqren_attente, s_ren_pqren_qui, s_ren_pqren_papier, s_ren_pqren_peur, s_ren_pqren_tps_loin, s_ren_queren_dent, s_ren_queren_medoc, s_ren_queren_lun, s_ren_queren_analyses, s_ren_queren_imagerie,  l_immi, group1, origine_tous_g2,  csnq_ego, femme_chinemo, langue_chinemo, age_chinemo, sante_chinemo,s_secuq, s_secuq_refus, dureeorigine,  s_traite, s_traite_peau,  agenq, durtotfrm, imc, ident_fa, poidsi) %>% data.frame() %>% #, matches("^iris_pct_im\\w*$"), matches("^dist_min\\w*$"), matches("^com_apl_\\w*$"),  matches("^lib_dist_min\\w*$")
   filter(!is.na(frott_ap_25)&!is.na(s_medeciq_d)&!is.na(s_medeciq_a)&!is.na(s_medeciq_b)&!is.na(s_medeciq_c)&!is.na(s_medeciq_e)&!is.na(s_medeciq_f))
 rownames(acm_frott) <- paste(acm_frott$ident_fa)
-# acm_frott$s_renonc <- acm_frott$s_renonc %>%
-#   fct_recode(
-#     "A renoncé à des soins" = "Oui",
-#     "N'a pas renoncé à des soins" = "Non",
-#     NULL = "Refus (ne pas lire)",
-#     NULL = "NSP (ne pas lire)"
-#   )
+acm_frott$s_renonc <- acm_frott$s_renonc %>%
+  fct_recode(
+    "A renoncé à des soins" = "Oui",
+    "N'a pas renoncé à des soins" = "Non",
+    NULL = "Refus (ne pas lire)",
+    NULL = "NSP (ne pas lire)"
+  )
 acm_frott_poids <- acm_frott %>% select(-ident_fa) 
 # %>% na.omit()
 acm_frott <- acm_frott_poids %>% select(-poidsi)
@@ -218,7 +215,7 @@ acm_frott$durtotfrm<- as.numeric(acm_frott$durtotfrm)
 
 
 ```{r, include =FALSE}
-res_frott <- MCA(acm_frott, quali.sup = 5:37, quanti.sup = 38:40, row.w = acm_frott_poids$poidsi)
+res_frott <- MCA(acm_frott, quali.sup = 5:38, quanti.sup = 39:41, row.w = acm_frott_poids$poidsi)
 ```
 
 ```{r, echo = FALSE, fig.width = 25}

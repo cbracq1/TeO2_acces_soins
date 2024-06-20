@@ -255,7 +255,7 @@ ggsurvey(indiv_immig_frott_pd) +
    theme(legend.position = "bottom")
 
 ggsurvey(indiv_chine_pd) +
-  aes(x = s_medeciq_f, fill = q_franc) +
+  aes(x = frott_ap_25, fill = q_franc) +
   geom_bar(position = "fill") +
   labs(
     x = "Origine",
